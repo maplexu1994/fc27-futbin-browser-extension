@@ -37,6 +37,13 @@ test('prefers an absolute sale timestamp for Beijing conversion', () => {
   assert.equal(new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(result.soldAt)), '16:49');
 });
 
+test('an unpriced sale does not shift the next sale timestamp', () => {
+  const sales = parser.parseLatestSalesText('Sep 28, 8:00 AM N/A Sep 28, 8:05 AM 20K');
+  const result = parser.lowestVisibleSale(sales, ['2026-09-28T07:00:00Z', '2026-09-28T07:05:00Z']);
+  assert.equal(result.lowestPrice, 20000);
+  assert.equal(result.soldAt, '2026-09-28T07:05:00.000Z');
+});
+
 test('rejects timezone-free timestamps as absolute times', () => {
   assert.equal(parser.parseAbsoluteTimestamp('2026-09-28 08:49:00'), null);
   assert.equal(parser.parseSalePrice('23.75K'), 23750);

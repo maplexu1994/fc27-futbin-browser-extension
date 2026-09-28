@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-test('an existing alarm survives worker startup and refreshes an active Market tab', async () => {
+test('active tabs stay visible, background tabs refresh, and failed alerts retry', async () => {
   const watchId = 'futbin:559';
   const data = {
     fc27PriceRangeWatchesV1: {
@@ -11,7 +11,7 @@ test('an existing alarm survives worker startup and refreshes an active Market t
         watchId, pageId: '559', basePlayerEaId: '243812', name: 'Rodrygo',
         version: 'Gold', overall: '84', enabled: true,
         url: 'https://www.futbin.com/27/player/559/rodrygo-silva-de-goes/market',
-        priceRule: { min: null, max: 21000 }, lastPrice: 23250,
+        priceRule: { min: null, max: 22000 }, lastPrice: 23250,
         lastRange: { min: 600, max: 110000 }
       }
     },
@@ -22,6 +22,9 @@ test('an existing alarm survives worker startup and refreshes an active Market t
   let alarmListener;
   let alarmCreates = 0;
   let reloads = 0;
+  let backgroundTabsCreated = 0;
+  const monitorTabs = [{ id: 9, active: true, url: data.fc27PriceRangeWatchesV1[watchId].url }];
+  let notificationAttempts = 0;
   const chrome = {
     storage: { local: {
       async get(keys) {
@@ -37,11 +40,18 @@ test('an existing alarm survives worker startup and refreshes an active Market t
       onAlarm: { addListener(listener) { alarmListener = listener; } }
     },
     tabs: {
-      async query() { return [{ id: 9, active: true, url: data.fc27PriceRangeWatchesV1[watchId].url }]; },
+      async query() { return monitorTabs; },
       async reload(id) {
-        assert.equal(id, 9);
+        assert.equal(id, 10);
         reloads++;
         queueMicrotask(() => { for (const listener of listeners) listener(id, { status: 'complete' }); });
+      },
+      async create(options) {
+        assert.equal(options.active, false);
+        const tab = { id: 10, active: false, url: options.url };
+        monitorTabs.push(tab);
+        backgroundTabsCreated++;
+        return tab;
       },
       async update() {},
       onUpdated: {
@@ -56,7 +66,7 @@ test('an existing alarm survives worker startup and refreshes an active Market t
       onStartup: { addListener() {} },
       onMessage: { addListener() {} }
     },
-    notifications: { async create() {}, onClicked: { addListener() {} } }
+    notifications: { async create() { if (++notificationAttempts === 1) throw new Error('notification unavailable'); }, onClicked: { addListener() {} } }
   };
   chrome.tabs.sendMessage = async () => ({ ok: true, item: {
     isMarketPage: true, pageId: '559', eaId: '243812', priceRange: { min: 600, max: 110000 },
@@ -74,13 +84,23 @@ test('an existing alarm survives worker startup and refreshes an active Market t
   assert.equal(alarmCreates, 0, 'worker startup must not postpone an existing alarm');
 
   alarmListener({ name: 'fc27-market-monitor' });
-  for (let i = 0; i < 100 && data.fc27PriceRangeWatchesV1[watchId].lastPrice !== 21750; i++) {
+  for (let i = 0; i < 100 && data.fc27PriceRangeStatusV1[watchId]?.state !== 'error'; i++) {
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
-  assert.equal(reloads, 1, 'the active monitor tab must also reload');
+  assert.equal(reloads, 0, 'the active monitor tab should not reload');
+  assert.equal(backgroundTabsCreated, 1, 'an active tab should get a background monitor copy');
   assert.equal(data.fc27PriceRangeWatchesV1[watchId].lastPrice, 21750);
-  assert.equal(data.fc27PriceRangeStatusV1[watchId].state, 'ok');
+  assert.equal(data.fc27PriceRangeWatchesV1[watchId].pendingPriceAlert, true);
   assert.equal(data.fc27MarketSnapshotsV1[watchId].length, 1);
   assert.equal(data.fc27PriceRangeWatchesV1[watchId].lastLatestSales.lowestPrice, 20500);
   assert.equal(data.fc27MarketSnapshotsV1[watchId][0].latestSaleSoldAt, '2026-09-28T08:12:00.000Z');
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  alarmListener({ name: 'fc27-market-monitor' });
+  for (let i = 0; i < 100 && data.fc27PriceRangeStatusV1[watchId]?.state !== 'ok'; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  assert.equal(reloads, 1, 'the background monitor tab should reload');
+  assert.equal(notificationAttempts, 2, 'the failed alert should retry');
+  assert.equal(data.fc27PriceRangeWatchesV1[watchId].pendingPriceAlert, false);
 });

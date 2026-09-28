@@ -117,8 +117,12 @@ async function saveRule(watchId, minText, maxText) {
   const stored = await chrome.storage.local.get(WATCH_KEY);
   const watches = stored[WATCH_KEY] || {};
   if (!watches[watchId]) throw new Error('这张卡已不在监控列表中。');
-  watches[watchId].priceRule = { min, max };
-  watches[watchId].priceAlertActive = false;
+  const previous = watches[watchId].priceRule || {};
+  if (previous.min !== min || previous.max !== max) {
+    watches[watchId].priceRule = { min, max };
+    watches[watchId].priceAlertActive = false;
+    watches[watchId].pendingPriceAlert = false;
+  }
   await chrome.storage.local.set({ [WATCH_KEY]: watches });
 }
 
@@ -128,7 +132,7 @@ async function renderMonitor() {
   const statuses = stored[STATUS_KEY] || {}, snapshots = stored[SNAPSHOT_KEY] || {};
   const entries = Object.entries(watches).filter(([, watch]) => watch.url);
   $('monitorState').textContent = `${entries.length} 张`;
-  $('monitorMessage').textContent = entries.length ? 'Market 页报价和 Latest Sales 每分钟检查；每 15 分钟保存样本。' : '打开任意 FUTBIN FC27 卡片后，点击“添加当前卡片”。';
+  $('monitorMessage').textContent = entries.length ? '前台页面不强制刷新；后台 Market 页每分钟刷新，每 15 分钟保存样本。' : '打开任意 FUTBIN FC27 卡片后，点击“添加当前卡片”。';
   const list = $('monitorPlayers'); list.replaceChildren();
   if (!entries.length) {
     const empty = document.createElement('li'); empty.className = 'empty'; empty.textContent = '尚未添加监控卡片'; list.append(empty); return;
@@ -239,9 +243,10 @@ $('checkMonitor').addEventListener('click', async () => {
   await renderMonitor();
   const results = response?.results || [], failures = results.filter((result) => result.status === 'error');
   const alerts = results.filter((result) => result.rangeChanged || result.priceAlert);
+  const saved = results.filter((result) => result.snapshotSaved).length;
   if (!response?.ok || failures.length) status(failures.length ? `${failures.length} 张检查失败，请查看卡片状态。` : response?.error || '检查失败。', 'error');
   else if (!results.length) status('尚未添加任何监控卡片。', 'error');
-  else status(`已检查并记录 ${results.length} 张卡${alerts.length ? `，触发 ${alerts.length} 个通知` : ''}。`, 'success');
+  else status(`已检查 ${results.length} 张卡，记录 ${saved} 条样本${alerts.length ? `，触发 ${alerts.length} 个通知` : ''}。`, 'success');
 });
 
 $('exportHistory').addEventListener('click', async () => {

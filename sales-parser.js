@@ -26,7 +26,7 @@
       const afterDate = text.slice(date.index + date[0].length, end).trim();
       const priceMatch = afterDate.match(/^([\d,]+(?:\.\d+)?\s*[KM]?)(?!\w)/i);
       const price = parseSalePrice(priceMatch?.[1]);
-      if (price != null) sales.push({ price, displayTime: date[0].trim() });
+      if (price != null) sales.push({ price, displayTime: date[0].trim(), sourceIndex: index });
     }
     return sales;
   }
@@ -84,7 +84,7 @@
     if (!sales.length) return null;
     const firstLowest = sales.reduce((best, sale, index) => sale.price < sales[best].price ? index : best, 0);
     const sale = sales[firstLowest];
-    const absolute = parseAbsoluteTimestamp(timestamps[firstLowest]);
+    const absolute = parseAbsoluteTimestamp(timestamps[sale.sourceIndex ?? firstLowest]);
     const soldAt = absolute || parseUkPageTime(sale.displayTime, now);
     return {
       lowestPrice: sale.price,

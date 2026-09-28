@@ -105,16 +105,21 @@ async function findMonitorTab(watch) {
   const wanted = toMarketUrl(watch.url);
   if (!wanted) return null;
   const tabs = await chrome.tabs.query({ url: 'https://www.futbin.com/27/player/*' });
-  return tabs.find((tab) => {
+  const matching = tabs.filter((tab) => {
     try { return toMarketUrl(tab.url) === wanted && /\/market\/?$/.test(new URL(tab.url).pathname); }
     catch (_) { return false; }
-  }) || null;
+  });
+  return matching.find((tab) => !tab.active) || matching[0] || null;
 }
 
 async function readWatch(watch, { reload = true } = {}) {
-  const tab = await findMonitorTab(watch);
+  let tab = await findMonitorTab(watch);
   if (!tab?.id) throw new Error('市场监控页未打开，请点击“打开监控页”');
-  if (reload) await reloadTabAndWait(tab.id);
+  if (reload && tab.active) {
+    tab = await chrome.tabs.create({ url: toMarketUrl(watch.url), active: false, pinned: true });
+  } else if (reload) {
+    await reloadTabAndWait(tab.id);
+  }
   const response = await readPageWhenReady(tab.id);
   if (!response.item.isMarketPage) throw new Error('当前探测页不是 Market 页面');
   if (watch.basePlayerEaId && response.item.eaId !== watch.basePlayerEaId) throw new Error(`基础球员 ID 不匹配：${response.item.eaId}`);
@@ -181,6 +186,9 @@ async function checkWatch(watchId, watch, options = {}) {
     const rangeChanged = Boolean(oldRange && (oldRange.min !== nextRange.min || oldRange.max !== nextRange.max));
     const alertMatches = priceMatches(current.priceRule, item.market.lowestPrice);
     const shouldAlert = alertMatches && !current.priceAlertActive;
+    if (rangeChanged) current.pendingRangeNotification = { from: oldRange, to: nextRange };
+    if (shouldAlert) current.pendingPriceAlert = true;
+    if (!alertMatches) current.pendingPriceAlert = false;
     current.priceAlertActive = alertMatches;
     current.lastRange = { ...nextRange, checkedAt: nowIso() };
     current.lastPrice = item.market.lowestPrice;
@@ -190,14 +198,26 @@ async function checkWatch(watchId, watch, options = {}) {
     const snapshotSaved = await maybeRecordSnapshot(watchId, current, item, options.forceSnapshot === true);
     watches[watchId] = current;
     await chrome.storage.local.set({ [WATCH_KEY]: watches });
+    let rangeNotified = false;
+    let priceNotified = false;
+    if (current.pendingRangeNotification) {
+      await notifyRangeChange(current, current.pendingRangeNotification.from, current.pendingRangeNotification.to);
+      delete current.pendingRangeNotification;
+      await chrome.storage.local.set({ [WATCH_KEY]: watches });
+      rangeNotified = true;
+    }
+    if (current.pendingPriceAlert) {
+      await notifyPriceAlert(current, item.market);
+      current.pendingPriceAlert = false;
+      await chrome.storage.local.set({ [WATCH_KEY]: watches });
+      priceNotified = true;
+    }
     const messages = [];
-    if (rangeChanged) messages.push('价格范围已调整');
-    if (shouldAlert) messages.push('最低价已进入提醒区间');
+    if (rangeNotified) messages.push('价格范围已调整');
+    if (priceNotified) messages.push('最低价已进入提醒区间');
     if (snapshotSaved) messages.push('已记录市场样本');
-    await setWatchStatus(watchId, { state: 'ok', message: messages.join('；') || '页面已刷新，最低价与价格范围未触发通知', checkedAt: nowIso() });
-    if (rangeChanged) await notifyRangeChange(current, oldRange, nextRange);
-    if (shouldAlert) await notifyPriceAlert(current, item.market);
-    return { watchId, status: rangeChanged || shouldAlert ? 'changed' : 'unchanged', item, rangeChanged, priceAlert: shouldAlert, snapshotSaved };
+    await setWatchStatus(watchId, { state: 'ok', message: messages.join('；') || '已读取页面，最低价与价格范围未触发通知', checkedAt: nowIso() });
+    return { watchId, status: rangeNotified || priceNotified ? 'changed' : 'unchanged', item, rangeChanged: rangeNotified, priceAlert: priceNotified, snapshotSaved };
   } catch (error) {
     await setWatchStatus(watchId, { state: 'error', message: error.message || String(error), checkedAt: nowIso() });
     return { watchId, status: 'error', error: error.message || String(error) };
@@ -205,7 +225,11 @@ async function checkWatch(watchId, watch, options = {}) {
 }
 
 async function checkAll(options = {}) {
-  if (currentCheck) return currentCheck;
+  if (currentCheck) {
+    if (!options.forceSnapshot) return currentCheck;
+    try { await currentCheck; } catch (_) { /* A manual sample still needs its own run. */ }
+    return checkAll(options);
+  }
   currentCheck = (async () => {
     const watches = await migrateWatches();
     const results = [];

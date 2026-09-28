@@ -132,7 +132,7 @@ async function renderMonitor() {
   const statuses = stored[STATUS_KEY] || {}, snapshots = stored[SNAPSHOT_KEY] || {};
   const entries = Object.entries(watches).filter(([, watch]) => watch.url);
   $('monitorState').textContent = `${entries.length} 张`;
-  $('monitorMessage').textContent = entries.length ? '前台页面不强制刷新；后台 Market 页每分钟刷新，每 15 分钟保存样本。' : '打开任意 FUTBIN FC27 卡片后，点击“添加当前卡片”。';
+  $('monitorMessage').textContent = entries.length ? '每张卡只需一个 Market 页；前台不强制刷新，后台每分钟刷新，每 15 分钟保存样本。' : '打开任意 FUTBIN FC27 卡片后，点击“添加当前卡片”。';
   const list = $('monitorPlayers'); list.replaceChildren();
   if (!entries.length) {
     const empty = document.createElement('li'); empty.className = 'empty'; empty.textContent = '尚未添加监控卡片'; list.append(empty); return;

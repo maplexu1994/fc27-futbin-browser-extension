@@ -18,6 +18,11 @@ function toMarketUrl(value) {
   } catch (_) { return ''; }
 }
 
+function isMarketTab(tab, wanted) {
+  try { return toMarketUrl(tab.url) === wanted && /\/market\/?$/.test(new URL(tab.url).pathname); }
+  catch (_) { return false; }
+}
+
 async function migrateWatches() {
   const stored = await chrome.storage.local.get([WATCH_KEY, STATUS_KEY]);
   const watches = stored[WATCH_KEY] || {};
@@ -51,9 +56,13 @@ async function ensureMonitor() {
   for (const watch of Object.values(watches)) {
     const marketUrl = toMarketUrl(watch.url);
     if (!marketUrl) continue;
-    const existing = tabs.find((tab) => toMarketUrl(tab.url) === marketUrl);
-    if (existing?.id && existing.url !== marketUrl) {
-      await chrome.tabs.update(existing.id, { url: marketUrl, pinned: true });
+    const marketTabs = tabs.filter((tab) => isMarketTab(tab, marketUrl));
+    if (!marketTabs.length) {
+      const detail = tabs.find((tab) => toMarketUrl(tab.url) === marketUrl);
+      if (detail?.id) await chrome.tabs.update(detail.id, { url: marketUrl, pinned: true });
+    } else if (marketTabs.length > 1) {
+      const keep = marketTabs.find((tab) => tab.active) || marketTabs[0];
+      for (const tab of marketTabs) if (tab.id && tab.id !== keep.id) await chrome.tabs.remove(tab.id);
     }
   }
   await chrome.alarms.clear('fc27-price-range-monitor');
@@ -63,33 +72,41 @@ async function ensureMonitor() {
   }
 }
 
-async function reloadTabAndWait(tabId, timeoutMs = 25000) {
-  await new Promise(async (resolve, reject) => {
-    const timer = setTimeout(() => { chrome.tabs.onUpdated.removeListener(listener); reject(new Error('监控页面加载超时')); }, timeoutMs);
+async function reloadTabAndWait(tabId, timeoutMs = 10000) {
+  await new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(listener);
+      if (error) reject(error); else resolve();
+    };
+    const timer = setTimeout(() => finish(new Error('监控页面未开始重新加载')), timeoutMs);
     const listener = (changedId, info) => {
-      if (changedId !== tabId || info.status !== 'complete') return;
-      clearTimeout(timer); chrome.tabs.onUpdated.removeListener(listener); resolve();
+      if (changedId === tabId && (info.status === 'loading' || info.status === 'complete')) finish();
     };
     chrome.tabs.onUpdated.addListener(listener);
-    try { await chrome.tabs.reload(tabId, { bypassCache: true }); }
-    catch (error) { clearTimeout(timer); chrome.tabs.onUpdated.removeListener(listener); reject(error); }
+    chrome.tabs.reload(tabId, { bypassCache: true }).catch(finish);
   });
 }
 
-async function readPageWhenReady(tabId, attempts = 15) {
+async function readPageWhenReady(tabId, attempts = 30) {
   let lastError;
-  try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['sales-parser.js', 'content.js'] });
-  } catch (error) {
-    lastError = new Error(`无法注入最新版 Market 探针：${error.message || String(error)}`);
-  }
   for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt % 5 === 0) {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, files: ['sales-parser.js', 'content.js'] });
+      } catch (error) {
+        lastError = new Error(`无法注入最新版 Market 探针：${error.message || String(error)}`);
+      }
+    }
     try {
       const response = await chrome.tabs.sendMessage(tabId, { type: 'FC27_READ_FUTBIN_MARKET_V3' });
       if (response?.ok && response.item?.priceRange && response.item?.market?.lowestPrice) return response;
       lastError = new Error(response?.error || 'FUTBIN 市场页尚未显示完整 PC 报价');
     } catch (error) { lastError = error; }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (attempt + 1 < attempts) await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   throw lastError || new Error('无法读取 FUTBIN 市场页');
 }
@@ -105,21 +122,14 @@ async function findMonitorTab(watch) {
   const wanted = toMarketUrl(watch.url);
   if (!wanted) return null;
   const tabs = await chrome.tabs.query({ url: 'https://www.futbin.com/27/player/*' });
-  const matching = tabs.filter((tab) => {
-    try { return toMarketUrl(tab.url) === wanted && /\/market\/?$/.test(new URL(tab.url).pathname); }
-    catch (_) { return false; }
-  });
-  return matching.find((tab) => !tab.active) || matching[0] || null;
+  const matching = tabs.filter((tab) => isMarketTab(tab, wanted));
+  return matching.find((tab) => tab.active) || matching[0] || null;
 }
 
 async function readWatch(watch, { reload = true } = {}) {
-  let tab = await findMonitorTab(watch);
+  const tab = await findMonitorTab(watch);
   if (!tab?.id) throw new Error('市场监控页未打开，请点击“打开监控页”');
-  if (reload && tab.active) {
-    tab = await chrome.tabs.create({ url: toMarketUrl(watch.url), active: false, pinned: true });
-  } else if (reload) {
-    await reloadTabAndWait(tab.id);
-  }
+  if (reload && !tab.active) await reloadTabAndWait(tab.id);
   const response = await readPageWhenReady(tab.id);
   if (!response.item.isMarketPage) throw new Error('当前探测页不是 Market 页面');
   if (watch.basePlayerEaId && response.item.eaId !== watch.basePlayerEaId) throw new Error(`基础球员 ID 不匹配：${response.item.eaId}`);

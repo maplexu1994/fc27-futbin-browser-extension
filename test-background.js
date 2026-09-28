@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-test('active tabs stay visible, background tabs refresh, and failed alerts retry', async () => {
+test('one Market tab is kept, active reading avoids reload, and failed alerts retry', async () => {
   const watchId = 'futbin:559';
   const data = {
     fc27PriceRangeWatchesV1: {
@@ -22,9 +22,13 @@ test('active tabs stay visible, background tabs refresh, and failed alerts retry
   let alarmListener;
   let alarmCreates = 0;
   let reloads = 0;
-  let backgroundTabsCreated = 0;
-  const monitorTabs = [{ id: 9, active: true, url: data.fc27PriceRangeWatchesV1[watchId].url }];
+  const monitorTabs = [
+    { id: 9, active: true, url: data.fc27PriceRangeWatchesV1[watchId].url },
+    { id: 10, active: false, url: data.fc27PriceRangeWatchesV1[watchId].url },
+    { id: 11, active: false, url: data.fc27PriceRangeWatchesV1[watchId].url.replace(/\/market$/, '') }
+  ];
   let notificationAttempts = 0;
+  let readAttempts = 0;
   const chrome = {
     storage: { local: {
       async get(keys) {
@@ -42,18 +46,16 @@ test('active tabs stay visible, background tabs refresh, and failed alerts retry
     tabs: {
       async query() { return monitorTabs; },
       async reload(id) {
-        assert.equal(id, 10);
+        assert.equal(id, 9);
         reloads++;
-        queueMicrotask(() => { for (const listener of listeners) listener(id, { status: 'complete' }); });
+        queueMicrotask(() => { for (const listener of listeners) listener(id, { status: 'loading' }); });
       },
-      async create(options) {
-        assert.equal(options.active, false);
-        const tab = { id: 10, active: false, url: options.url };
-        monitorTabs.push(tab);
-        backgroundTabsCreated++;
-        return tab;
+      async remove(id) {
+        const index = monitorTabs.findIndex((tab) => tab.id === id);
+        assert.notEqual(index, -1);
+        monitorTabs.splice(index, 1);
       },
-      async update() {},
+      async update() { throw new Error('an existing Market tab must not convert another detail tab'); },
       onUpdated: {
         addListener(listener) { listeners.add(listener); },
         removeListener(listener) { listeners.delete(listener); }
@@ -68,7 +70,10 @@ test('active tabs stay visible, background tabs refresh, and failed alerts retry
     },
     notifications: { async create() { if (++notificationAttempts === 1) throw new Error('notification unavailable'); }, onClicked: { addListener() {} } }
   };
-  chrome.tabs.sendMessage = async () => ({ ok: true, item: {
+  chrome.tabs.sendMessage = async () => {
+    readAttempts++;
+    if (reloads && readAttempts === 2) throw new Error('page probe still loading');
+    return { ok: true, item: {
     isMarketPage: true, pageId: '559', eaId: '243812', priceRange: { min: 600, max: 110000 },
     updatedLabel: 'PRICE UPDATED: 1 MIN AGO', collectedAt: new Date().toISOString(),
     latestSales: { lowestPrice: 20500, soldAt: '2026-09-28T08:12:00.000Z', displayTime: 'Sep 28, 8:12 AM', timeBasis: 'absolute', sampleCount: 9 },
@@ -76,31 +81,34 @@ test('active tabs stay visible, background tabs refresh, and failed alerts retry
       prices: [21750, 22000, 22000, 22250, 22250], lowestPrice: 21750,
       visibleCount: 5, atLowestCount: 1, within5Count: 5, within5Limit: 22837
     }
-  } });
+  } };
+  };
 
   const code = fs.readFileSync(require.resolve('./background.js'), 'utf8');
   vm.runInNewContext(code, { chrome, URL, setTimeout, clearTimeout, queueMicrotask, Date, console });
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(alarmCreates, 0, 'worker startup must not postpone an existing alarm');
+  assert.deepEqual(monitorTabs.map((tab) => tab.id), [9, 11], 'only the extra Market tab should be closed');
 
   alarmListener({ name: 'fc27-market-monitor' });
   for (let i = 0; i < 100 && data.fc27PriceRangeStatusV1[watchId]?.state !== 'error'; i++) {
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
   assert.equal(reloads, 0, 'the active monitor tab should not reload');
-  assert.equal(backgroundTabsCreated, 1, 'an active tab should get a background monitor copy');
   assert.equal(data.fc27PriceRangeWatchesV1[watchId].lastPrice, 21750);
   assert.equal(data.fc27PriceRangeWatchesV1[watchId].pendingPriceAlert, true);
   assert.equal(data.fc27MarketSnapshotsV1[watchId].length, 1);
   assert.equal(data.fc27PriceRangeWatchesV1[watchId].lastLatestSales.lowestPrice, 20500);
   assert.equal(data.fc27MarketSnapshotsV1[watchId][0].latestSaleSoldAt, '2026-09-28T08:12:00.000Z');
 
+  monitorTabs[0].active = false;
   await new Promise((resolve) => setTimeout(resolve, 0));
   alarmListener({ name: 'fc27-market-monitor' });
   for (let i = 0; i < 100 && data.fc27PriceRangeStatusV1[watchId]?.state !== 'ok'; i++) {
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
   assert.equal(reloads, 1, 'the background monitor tab should reload');
+  assert.equal(readAttempts, 3, 'the probe should retry after the page starts loading');
   assert.equal(notificationAttempts, 2, 'the failed alert should retry');
   assert.equal(data.fc27PriceRangeWatchesV1[watchId].pendingPriceAlert, false);
 });

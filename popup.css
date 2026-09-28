@@ -5,11 +5,9 @@ header strong { font-size: 15px; }
 header p, .hint { margin: 3px 0 0; color: #9eb0c3; }
 .badge { padding: 4px 8px; border-radius: 12px; color: #bdebdc; background: #173b34; white-space: nowrap; }
 main { padding: 14px 16px 16px; }
-.load-row, .actions { display: flex; gap: 8px; }
-button, .button { min-height: 34px; padding: 7px 10px; border: 0; border-radius: 6px; color: #e9f0f8; background: #26384a; cursor: pointer; text-align: center; }
+.actions { display: flex; gap: 8px; }
+button { min-height: 34px; padding: 7px 10px; border: 0; border-radius: 6px; color: #e9f0f8; background: #26384a; cursor: pointer; text-align: center; }
 button:disabled { opacity: .45; cursor: default; }
-button.primary { flex: 1; color: #06271e; background: #61d8b7; font-weight: 650; }
-.button.secondary { flex: 1; }
 input[type=file] { display: none; }
 .hint { margin: 8px 0 12px; font-size: 12px; }
 .status { min-height: 42px; margin: 10px 0; padding: 9px; border: 1px solid #34475b; border-radius: 6px; color: #c9d8e7; background: #172330; overflow-wrap: anywhere; }
@@ -17,8 +15,7 @@ input[type=file] { display: none; }
 .status.success { color: #b8f2dd; border-color: #31745f; }
 .actions button { flex: 1; }
 .section-title { margin-top: 15px; font-weight: 650; }
-.monitor-panel { margin-top: 14px; padding-top: 2px; border-top: 1px solid #29394a; }
-.monitor-title { display: flex; justify-content: space-between; align-items: center; }
+.monitor-panel { padding-top: 2px; }
 .monitor-list { max-height: 390px; margin: 8px 0 0; padding: 0; overflow: auto; list-style: none; }
 .monitor-card { margin-bottom: 8px; padding: 9px; border: 1px solid #34475b; border-radius: 7px; background: #172330; }
 .monitor-card-head { display: flex; justify-content: space-between; gap: 8px; }
@@ -37,9 +34,6 @@ input[type=file] { display: none; }
 .monitor-card-actions button { min-height: 27px; padding: 4px 8px; font-size: 11px; }
 .monitor-card-actions .remove { color: #ffb6b6; }
 .monitor-actions { margin-top: 8px; }
-.players { max-height: 220px; margin: 7px 0 0; padding: 0; overflow: auto; list-style: none; }
-.players li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 7px 4px; border-bottom: 1px solid #263544; }
-.players small { display: block; color: #9eb0c3; }
 .tag { align-self: center; color: #9eb0c3; }
 .tag.done { color: #61d8b7; }
 .tag.empty-price { color: #ffc76b; }

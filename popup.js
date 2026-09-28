@@ -1,8 +1,6 @@
-const CSV_FIELDS = ['card_id', 'game', 'player_id', 'name', 'version', 'source', 'source_card_id', 'market', 'price_type', 'price', 'source_time', 'collected_at', 'demo'];
 const WATCH_KEY = 'fc27PriceRangeWatchesV1';
 const STATUS_KEY = 'fc27PriceRangeStatusV1';
 const SNAPSHOT_KEY = 'fc27MarketSnapshotsV1';
-const state = { cards: [], captures: {}, urls: {} };
 const $ = (id) => document.getElementById(id);
 
 function status(message, kind = '') {
@@ -18,69 +16,21 @@ function toMarketUrl(value) {
   } catch (_) { return ''; }
 }
 
-function parseCsv(text) {
-  const rows = [];
-  let row = [], value = '', quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quoted) {
-      if (char === '"' && text[i + 1] === '"') { value += '"'; i++; }
-      else if (char === '"') quoted = false; else value += char;
-    } else if (char === '"') quoted = true;
-    else if (char === ',') { row.push(value); value = ''; }
-    else if (char === '\n') { row.push(value.replace(/\r$/, '')); rows.push(row); row = []; value = ''; }
-    else value += char;
-  }
-  if (value || row.length) { row.push(value.replace(/\r$/, '')); rows.push(row); }
-  const headers = (rows.shift() || []).map((item) => item.trim().replace(/^\uFEFF/, ''));
-  return rows.filter((values) => values.some((item) => item.trim())).map((values) => Object.fromEntries(headers.map((key, index) => [key, (values[index] || '').trim()])));
-}
-
 function csvEscape(value) {
   const text = String(value ?? '');
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-function downloadCsv(filename, fields, rows) {
-  const content = '\uFEFF' + [fields.join(','), ...rows.map((row) => fields.map((field) => csvEscape(row[field])).join(','))].join('\r\n') + '\r\n';
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+function downloadFile(filename, content, mimeType) {
+  const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
   const anchor = document.createElement('a');
   anchor.href = url; anchor.download = filename; anchor.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function rowsForExport() {
-  return Object.values(state.captures).filter((item) => item.price != null).map((item) => ({
-    card_id: item.card.card_id, game: 'FC27', player_id: item.card.player_id, name: item.card.name,
-    version: item.card.version, source: 'futbin', source_card_id: item.pageId, market: 'pc',
-    price_type: 'reference_lowest', price: item.price, source_time: item.updatedLabel || '',
-    collected_at: item.collectedAt, demo: '0'
-  }));
-}
-
-async function persist() {
-  await chrome.storage.local.set({ fc27Cards: state.cards, fc27Captures: state.captures, fc27FutbinUrlsV2: state.urls });
-}
-
-function renderBatch() {
-  const done = state.cards.filter((card) => state.captures[card.ea_id]).length;
-  $('count').textContent = state.cards.length ? `${done} / ${state.cards.length} 已采集` : '未加载批次';
-  $('exportCsv').disabled = rowsForExport().length === 0;
-  $('openNext').disabled = state.cards.length === 0;
-  $('capture').disabled = state.cards.length === 0;
-  const list = $('players'); list.replaceChildren();
-  if (!state.cards.length) {
-    const li = document.createElement('li'); li.className = 'empty'; li.textContent = '尚未加载批次'; list.append(li); return;
-  }
-  for (const card of state.cards) {
-    const li = document.createElement('li');
-    const label = document.createElement('span'); label.textContent = `${card.name} · ${card.version}`;
-    const sub = document.createElement('small'); sub.textContent = `EA ID ${card.ea_id} · ${card.overall || '评分未填'}`; label.append(sub);
-    const tag = document.createElement('span'); const captured = state.captures[card.ea_id];
-    tag.className = `tag ${captured ? (captured.price == null ? 'empty-price' : 'done') : ''}`;
-    tag.textContent = captured ? (captured.price == null ? '无报价' : captured.price.toLocaleString()) : '待采集';
-    li.append(label, tag); list.append(li);
-  }
+function downloadCsv(filename, fields, rows) {
+  const content = '\uFEFF' + [fields.join(','), ...rows.map((row) => fields.map((field) => csvEscape(row[field])).join(','))].join('\r\n') + '\r\n';
+  downloadFile(filename, content, 'text/csv;charset=utf-8');
 }
 
 const formatCoins = (value) => value == null ? '—' : Number(value).toLocaleString('en-US');
@@ -178,7 +128,6 @@ async function renderMonitor() {
   const statuses = stored[STATUS_KEY] || {}, snapshots = stored[SNAPSHOT_KEY] || {};
   const entries = Object.entries(watches).filter(([, watch]) => watch.url);
   $('monitorState').textContent = `${entries.length} 张`;
-  $('monitorState').className = `tag ${entries.length ? 'done' : ''}`;
   $('monitorMessage').textContent = entries.length ? 'Market 页报价和 Latest Sales 每分钟检查；每 15 分钟保存样本。' : '打开任意 FUTBIN FC27 卡片后，点击“添加当前卡片”。';
   const list = $('monitorPlayers'); list.replaceChildren();
   if (!entries.length) {
@@ -245,13 +194,6 @@ async function renderMonitor() {
   }
 }
 
-async function loadPersisted() {
-  const stored = await chrome.storage.local.get(['fc27Cards', 'fc27Captures', 'fc27FutbinUrlsV2']);
-  state.cards = stored.fc27Cards || []; state.captures = stored.fc27Captures || {}; state.urls = stored.fc27FutbinUrlsV2 || {};
-  for (const key of Object.keys(state.urls)) state.urls[key] = toMarketUrl(state.urls[key]) || state.urls[key];
-  renderBatch(); await renderMonitor();
-}
-
 $('browsePlayers').addEventListener('click', async () => {
   await chrome.tabs.create({ url: 'https://www.futbin.com/27/players', active: true });
   status('已打开球员目录。选择对应卡片后可从详情页直接添加，扩展会切换到 Market 页。');
@@ -273,7 +215,7 @@ $('bindMonitor').addEventListener('click', async () => {
       overall: item.overall || '', enabled: true, url: item.marketUrl || toMarketUrl(item.url), pageId: item.pageId,
       priceRule: existing?.priceRule || { min: null, max: null },
       lastRange: existing?.lastRange || { ...item.priceRange, checkedAt: new Date().toISOString() },
-      lastPrice: item.market?.lowestPrice ?? item.price,
+      lastPrice: item.market?.lowestPrice ?? existing?.lastPrice ?? null,
       lastMarket: item.market?.lowestPrice ? { ...item.market, checkedAt: new Date().toISOString() } : existing?.lastMarket,
       lastLatestSales: item.isMarketPage ? (item.latestSales ? { ...item.latestSales, checkedAt: new Date().toISOString() } : null) : existing?.lastLatestSales
     };
@@ -325,56 +267,39 @@ $('testNotification').addEventListener('click', async () => {
   status(response?.ok ? '测试通知已发送。' : response?.error || '无法发送测试通知。', response?.ok ? 'success' : 'error');
 });
 
-$('cardsFile').addEventListener('change', async (event) => {
+$('exportBackup').addEventListener('click', async () => {
   try {
-    const file = event.target.files[0]; if (!file) return;
-    const cards = parseCsv((await file.text()).replace(/^\uFEFF/, ''));
-    if (!cards.length || cards.length > 10) throw new Error('cards.csv 必须包含 1 到 10 张卡。');
-    const seen = new Set();
-    for (const card of cards) {
-      if (card.game !== 'FC27' || !/^\d+$/.test(card.ea_id || '') || !card.card_id || !card.player_id || !card.name || !card.version) throw new Error('cards.csv 缺少必需字段或不是 FC27 球员卡。');
-      if (seen.has(card.ea_id)) throw new Error(`批次中 EA ID 重复：${card.ea_id}`);
-      seen.add(card.ea_id);
-    }
-    state.cards = cards; state.captures = {}; await persist(); renderBatch();
-    status(`已加载 ${cards.length} 张卡。`, 'success');
+    const watches = await migrateWatches();
+    const stored = await chrome.storage.local.get(SNAPSHOT_KEY);
+    const backup = globalThis.fc27MonitorBackup.createBackup(watches, stored[SNAPSHOT_KEY] || {});
+    downloadFile(`fc27-market-monitor-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(backup, null, 2), 'application/json;charset=utf-8');
+    status(`已备份 ${Object.keys(backup.watches).length} 张监控卡片及市场历史。`, 'success');
+  } catch (error) { status(error.message || String(error), 'error'); }
+});
+
+$('importBackup').addEventListener('click', () => {
+  $('backupFile').click();
+});
+
+$('backupFile').addEventListener('change', async (event) => {
+  try {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) throw new Error('备份文件超过 25 MB，无法导入。');
+    const backup = JSON.parse(await file.text());
+    const watches = await migrateWatches();
+    const stored = await chrome.storage.local.get(SNAPSHOT_KEY);
+    const result = globalThis.fc27MonitorBackup.mergeBackup(backup, watches, stored[SNAPSHOT_KEY] || {});
+    await chrome.storage.local.set({ [WATCH_KEY]: result.watches, [SNAPSHOT_KEY]: result.snapshots });
+    await renderMonitor();
+    status(`已恢复 ${result.imported} 张卡片和 ${result.historyCount} 条备份记录；现有监控规则优先。请点击“打开全部 Market 页”。`, 'success');
   } catch (error) { status(error.message || String(error), 'error'); }
   event.target.value = '';
-});
-
-$('openNext').addEventListener('click', async () => {
-  const card = state.cards.find((item) => !state.captures[item.ea_id]);
-  if (!card) return status('本批次的卡片都已完成。', 'success');
-  const knownUrl = toMarketUrl(state.urls[card.ea_id]);
-  if (!knownUrl) await chrome.storage.local.set({ fc27PendingSearch: { eaId: card.ea_id, name: card.name, overall: card.overall || '' } });
-  await chrome.tabs.create({ url: knownUrl || 'https://www.futbin.com/27/players', active: true });
-  status(knownUrl ? `已打开 ${card.name} 的 Market 页。` : `已打开球员目录，请选择 ${card.name} 的正确版本。`);
-});
-
-$('capture').addEventListener('click', async () => {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url?.startsWith('https://www.futbin.com/27/player/')) throw new Error('请先打开 FUTBIN FC27 球员页。');
-    const response = await readFutbinPage(tab.id);
-    if (!response?.ok) throw new Error(response?.error || '无法读取当前页面。');
-    const item = response.item;
-    const card = state.cards.find((candidate) => candidate.ea_id === item.eaId || candidate.player_id === item.eaId);
-    if (!card) throw new Error(`页面基础球员 ID ${item.eaId} 不在当前批次。`);
-    if (card.overall && item.overall && card.overall !== item.overall) throw new Error(`评分不匹配：工具目录 ${card.overall}，FUTBIN ${item.overall}。`);
-    state.captures[card.ea_id] = { card, ...item };
-    state.urls[card.ea_id] = item.marketUrl || toMarketUrl(item.url);
-    await persist(); renderBatch();
-    status(item.price == null ? `已核对 ${card.name}，但当前没有有效 PC 报价。` : `已采集 ${card.name}：${formatCoins(item.price)} 金币。`, item.price == null ? '' : 'success');
-  } catch (error) { status(error.message || String(error), 'error'); }
-});
-
-$('exportCsv').addEventListener('click', () => {
-  const rows = rowsForExport(); downloadCsv('futbin-prices.csv', CSV_FIELDS, rows);
-  status(`已导出 ${rows.length} 条报价。`, 'success');
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes[WATCH_KEY] || changes[STATUS_KEY] || changes[SNAPSHOT_KEY])) renderMonitor().catch(() => {});
 });
 
-loadPersisted().catch((error) => status(error.message || String(error), 'error'));
+renderMonitor().catch((error) => status(error.message || String(error), 'error'));

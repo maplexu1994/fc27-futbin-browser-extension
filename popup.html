@@ -9,23 +9,12 @@
 <body>
   <header>
     <div><strong>FC27 FUTBIN 市场监控</strong><p>PC 报价、最近成交与价格范围</p></div>
-    <span id="count" class="badge">未加载批次</span>
+    <span id="monitorState" class="badge">0 张</span>
   </header>
   <main>
-    <section class="load-row">
-      <label class="button secondary" for="cardsFile">导入 cards.csv</label>
-      <input id="cardsFile" type="file" accept=".csv,text/csv">
-      <button id="exportCsv" class="primary" disabled>导出 prices.csv</button>
-    </section>
-    <p class="hint">批次采集仍可使用；已确认的球员链接会自动切换到 Market 页。</p>
     <div id="status" role="status" class="status">可以直接添加当前 FUTBIN 卡片开始监控。</div>
-    <section class="actions">
-      <button id="openNext" disabled>打开下一张 / 球员目录</button>
-      <button id="capture" disabled>采集当前 FUTBIN 页面</button>
-    </section>
-
     <section class="monitor-panel">
-      <div class="section-title monitor-title"><span>PC 市场监控</span><span id="monitorState" class="tag">0 张</span></div>
+      <div class="section-title">PC 市场监控</div>
       <p id="monitorMessage" class="hint">最低价和 Latest Sales 每分钟检查；市场样本每 15 分钟记录。</p>
       <ol id="monitorPlayers" class="monitor-list"><li class="empty">尚未添加监控卡片</li></ol>
       <div class="actions monitor-actions">
@@ -40,11 +29,11 @@
         <button id="exportHistory">导出市场记录</button>
         <button id="testNotification">测试通知</button>
       </div>
-    </section>
-
-    <section>
-      <div class="section-title">本批球员</div>
-      <ol id="players" class="players"><li class="empty">尚未加载批次</li></ol>
+      <div class="actions monitor-actions">
+        <button id="exportBackup">备份监控数据</button>
+        <button id="importBackup">恢复监控数据</button>
+        <input id="backupFile" type="file" accept=".json,application/json">
+      </div>
     </section>
     <details>
       <summary>监控口径与隐私</summary>
@@ -52,6 +41,7 @@
     </details>
   </main>
   <script src="sales-parser.js"></script>
+  <script src="monitor-backup.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

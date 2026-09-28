@@ -1,27 +1,6 @@
 (() => {
   if (globalThis.__fc27MarketMonitorContentV3) return;
   globalThis.__fc27MarketMonitorContentV3 = true;
-  async function fillPendingSearch() {
-    if (!/^\/27\/players\/?$/.test(location.pathname)) return;
-    const { fc27PendingSearch: pending } = await chrome.storage.local.get('fc27PendingSearch');
-    if (!pending?.name) return;
-    let attempts = 0;
-    const timer = setInterval(async () => {
-      attempts++;
-      const input = document.querySelector('input[placeholder*="Player name" i], input[placeholder*="Search for FC 27 Player" i]');
-      if (!input && attempts < 40) return;
-      clearInterval(timer);
-      if (!input) return;
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-      if (setter) setter.call(input, pending.name); else input.value = pending.name;
-      input.focus();
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a' }));
-      await chrome.storage.local.remove('fc27PendingSearch');
-    }, 250);
-  }
-
   function productIdentity() {
     const found = [];
     const walk = (value) => {
@@ -174,21 +153,19 @@
     const box = boxes[0];
     const market = visiblePcListings(box);
     const latestSales = /\/market\/?$/.test(location.pathname) ? readLatestSales(box, pageId) : null;
-    const recent = (box.querySelector('.price-box-background-graph')?.getAttribute('data-recent-prices') || '').split(',').map((value) => Number(value.trim())).filter((value) => Number.isSafeInteger(value) && value > 0);
     const priceRange = readPriceRangeNear(box);
     const path = location.pathname.replace(/\/$/, '').replace(/\/market$/, '');
     return {
       ...productIdentity(), pageId, url: location.href, marketUrl: `${location.origin}${path}/market`,
-      isMarketPage: /\/market\/?$/.test(location.pathname), price: market.lowestPrice, market, latestSales, priceRange,
+      isMarketPage: /\/market\/?$/.test(location.pathname), market, latestSales, priceRange,
       rangeDebug: priceRange ? '' : [box.innerText, box.nextElementSibling?.innerText, box.parentElement?.innerText].filter(Boolean).join(' | ').replace(/\s+/g, ' ').slice(0, 300),
-      updatedLabel: (box.querySelector('.prices-updated')?.textContent || '').replace(/\s+/g, ' ').trim(), recentPrices: recent, collectedAt: new Date().toISOString()
+      updatedLabel: (box.querySelector('.prices-updated')?.textContent || '').replace(/\s+/g, ' ').trim(), collectedAt: new Date().toISOString()
     };
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!['FC27_READ_FUTBIN_PAGE', 'FC27_READ_FUTBIN_MARKET_V2', 'FC27_READ_FUTBIN_MARKET_V3'].includes(message?.type)) return;
+    if (message?.type !== 'FC27_READ_FUTBIN_MARKET_V3') return;
     try { sendResponse({ ok: true, item: readPage() }); } catch (error) { sendResponse({ ok: false, error: error.message || String(error) }); }
     return true;
   });
-  fillPendingSearch().catch(() => {});
 })();

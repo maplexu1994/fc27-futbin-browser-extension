@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "FC27 FUTBIN Market Monitor",
+  "version": "1.4.1",
+  "description": "Monitor FUTBIN FC27 Market prices, visible listing depth, and EA price-range changes.",
+  "permissions": ["storage", "tabs", "activeTab", "alarms", "notifications", "scripting"],
+  "host_permissions": ["https://www.futbin.com/*"],
+  "action": {
+    "default_title": "FC27 FUTBIN 市场监控",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "monitor-icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.futbin.com/27/player/*",
+        "https://www.futbin.com/27/players*"
+      ],
+      "js": ["sales-parser.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

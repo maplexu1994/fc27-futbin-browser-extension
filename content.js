@@ -69,16 +69,10 @@
   }
 
   function visiblePcListings(box) {
-    const slots = [...box.querySelectorAll('[class*="lowest-price-"]')]
-      .map((element) => {
-        const match = [...element.classList].join(' ').match(/lowest-price-(\d+)/);
-        return { slot: match ? Number(match[1]) : 999, price: parseCoins(element.textContent) };
-      })
-      .filter((item) => item.price != null)
-      .sort((a, b) => a.slot - b.slot);
-    const bySlot = new Map();
-    for (const item of slots) if (!bySlot.has(item.slot)) bySlot.set(item.slot, item.price);
-    const prices = [...bySlot.values()].slice(0, 5);
+    const prices = [...box.querySelectorAll('.lowest-price-1, .lowest-prices-wrapper > .lowest-price')]
+      .map((element) => parseCoins(element.textContent))
+      .filter((price) => price != null)
+      .slice(0, 5);
     const lowestPrice = prices.length ? Math.min(...prices) : null;
     const within5Limit = lowestPrice == null ? null : Math.floor(lowestPrice * 1.05);
     return { prices, lowestPrice, visibleCount: prices.length, atLowestCount: lowestPrice == null ? 0 : prices.filter((price) => price === lowestPrice).length, within5Count: within5Limit == null ? 0 : prices.filter((price) => price <= within5Limit).length, within5Limit };

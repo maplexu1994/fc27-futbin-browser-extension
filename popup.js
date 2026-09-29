@@ -157,7 +157,9 @@ async function renderMonitor() {
     const price = document.createElement('div'); price.className = 'monitor-price';
     price.textContent = `${monitorStatus?.state === 'error' ? '上次读到的最低价' : '最低价'} ${formatCoins(market?.lowestPrice ?? watch.lastPrice)}`;
     const depth = document.createElement('div'); depth.className = 'monitor-depth';
-    depth.textContent = market ? `可见 ${market.visibleCount}/5 档 · 最低价 ${market.atLowestCount} 张 · +5% 内 ${market.within5Count} 张` : '等待首次 Market 深度采样';
+    depth.textContent = market
+      ? `页面报价样本 ${market.visibleCount} 个：${market.atLowestCount} 个与最低价相同，另有 ${Math.max(0, market.within5Count - market.atLowestCount)} 个比最低价高不超过 5%`
+      : '等待首次 PC 报价采样';
     const sales = document.createElement('div'); sales.className = 'monitor-sales';
     if (latestSales?.lowestPrice) {
       const beijing = formatBeijingTime(latestSales.soldAt);

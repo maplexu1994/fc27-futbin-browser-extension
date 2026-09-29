@@ -150,8 +150,8 @@ async function notifyPriceAlert(watch, market) {
   const ruleText = rule.min != null ? `${formatCoins(rule.min)}–${formatCoins(rule.max)}` : `≤ ${formatCoins(rule.max)}`;
   await chrome.notifications.create(`fc27-price-${watch.pageId}-${Date.now()}`, {
     type: 'basic', iconUrl: chrome.runtime.getURL('monitor-icon.png'), title: `${watch.name} 已进入低价提醒区间`,
-    message: `当前最低 ${formatCoins(market.lowestPrice)}（规则 ${ruleText}）；最低价 ${market.atLowestCount} 张，+5% 内 ${market.within5Count} 张`,
-    contextMessage: 'FUTBIN Market 可见最低五档样本', priority: 2, requireInteraction: true
+    message: `当前最低 ${formatCoins(market.lowestPrice)}（规则 ${ruleText}）；页面报价样本 ${market.visibleCount} 个：同价最低 ${market.atLowestCount} 个，另有 ${Math.max(0, market.within5Count - market.atLowestCount)} 个比最低价高不超过 5%`,
+    contextMessage: 'FUTBIN Market 页面报价样本（最多 5 个）', priority: 2, requireInteraction: true
   });
 }
 

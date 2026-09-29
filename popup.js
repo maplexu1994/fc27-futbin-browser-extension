@@ -43,6 +43,13 @@ function formatTime(value) {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatLowestPriceChange(prices) {
+  const [before, after] = prices;
+  const difference = after - before;
+  const movement = difference < 0 ? '下移' : difference > 0 ? '上移' : '持平';
+  return `${formatCoins(before)}→${formatCoins(after)}（${movement}${difference ? ` ${formatCoins(Math.abs(difference))}` : ''}）`;
+}
+
 function formatBeijingTime(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -144,7 +151,8 @@ async function renderMonitor() {
       ...correctedSaleTime(watch.lastLatestSales.displayTime, watch.lastLatestSales.soldAt,
         watch.lastLatestSales.timeBasis, watch.lastLatestSales.checkedAt)
     } : null;
-    const sampleCount = (snapshots[watchId] || []).length;
+    const history = snapshots[watchId] || [];
+    const sampleCount = history.length;
     const li = document.createElement('li'); li.className = 'monitor-card';
     const head = document.createElement('div'); head.className = 'monitor-card-head';
     const identity = document.createElement('span');
@@ -160,6 +168,28 @@ async function renderMonitor() {
     depth.textContent = market
       ? `页面报价样本 ${market.visibleCount} 个：${market.atLowestCount} 个与最低价相同，另有 ${Math.max(0, market.within5Count - market.atLowestCount)} 个比最低价高不超过 5%`
       : '等待首次 PC 报价采样';
+    const trend = document.createElement('div'); trend.className = 'monitor-trend';
+    const comparison = globalThis.fc27MarketTrend.compare(market, history);
+    if (comparison) {
+      const priceMovement = document.createElement('div'); priceMovement.className = 'monitor-trend-price';
+      priceMovement.textContent = `近 ${comparison.minutes} 分钟最低报价：${formatLowestPriceChange(comparison.lowestPrice)}`;
+      const direction = document.createElement('div'); direction.className = 'monitor-trend-signal';
+      direction.textContent = `预计走势：${comparison.signal}`;
+      const note = document.createElement('details'); note.className = 'monitor-trend-note';
+      const summary = document.createElement('summary'); summary.textContent = '判断依据';
+      const explanation = document.createElement('p');
+      const lowLayer = comparison.lowListings
+        ? `固定以先前最低报价 ${formatCoins(comparison.ceiling)} 为门槛，该价及以下的页面可见报价 ${comparison.lowListings[0]}→${comparison.lowListings[1]}。`
+        : '历史记录缺少可对比的报价明细，暂不能判断低价层的数量变化。';
+      const continuity = comparison.previousKind === comparison.kind &&
+        (comparison.kind === 'up' || comparison.kind === 'down')
+        ? '已参考前一段约 15 分钟的同向变化。' : '目前只有单段信号，需继续观察后续样本。';
+      explanation.textContent = `${lowLayer}最低价下移且固定低价层增多，偏跌；不再创新低且低价层减少，可能初步止跌；旧低价层消失且最低价上移，偏涨。${continuity}页面只显示前 5 个报价，挂单消失也可能是成交、撤单或到期，不能据此认定全市场挂单数或真实成交。`;
+      note.append(summary, explanation);
+      trend.append(priceMovement, direction, note);
+    } else {
+      trend.textContent = market ? '预计走势：等待约 15 分钟的历史报价' : '预计走势：等待首次报价';
+    }
     const sales = document.createElement('div'); sales.className = 'monitor-sales';
     if (latestSales?.lowestPrice) {
       const beijing = formatBeijingTime(latestSales.soldAt);
@@ -196,7 +226,7 @@ async function renderMonitor() {
     const remove = document.createElement('button'); remove.className = 'remove'; remove.textContent = '移除';
     remove.addEventListener('click', async () => { await removeWatch(watchId); await renderMonitor(); status(`已移除 ${watch.name} 的监控和历史。`, 'success'); });
     actions.append(open, remove);
-    li.append(head, price, depth, sales, range, rule, ruleHelp, detail, actions); list.append(li);
+    li.append(head, price, depth, trend, sales, range, rule, ruleHelp, detail, actions); list.append(li);
   }
 }
 

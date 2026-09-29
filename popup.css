@@ -36,6 +36,8 @@ input[type=file] { display: none; }
 .rule-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 5px; margin-top: 8px; }
 .rule-row input { min-width: 0; height: 30px; padding: 5px 7px; border: 1px solid #40566c; border-radius: 5px; color: #e8eef7; background: #101923; }
 .rule-row button { min-height: 30px; padding: 4px 7px; font-size: 11px; }
+.sale-alert-toggle { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: #ffcf83; font-size: 12px; cursor: pointer; }
+.sale-alert-toggle input { margin: 0; accent-color: #61d8b7; }
 .monitor-card-actions { display: flex; gap: 6px; margin-top: 7px; }
 .monitor-card-actions button { min-height: 27px; padding: 4px 8px; font-size: 11px; }
 .monitor-card-actions .remove { color: #ffb6b6; }

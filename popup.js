@@ -133,6 +133,19 @@ async function saveRule(watchId, minText, maxText) {
   await chrome.storage.local.set({ [WATCH_KEY]: watches });
 }
 
+async function saveBelowLatestSaleAlert(watchId, enabled) {
+  const stored = await chrome.storage.local.get(WATCH_KEY);
+  const watches = stored[WATCH_KEY] || {};
+  const watch = watches[watchId];
+  if (!watch) throw new Error('这张卡已不在监控列表中。');
+  if (Boolean(watch.belowLatestSaleAlertEnabled) !== enabled) {
+    watch.belowLatestSaleAlertEnabled = enabled;
+    watch.belowLatestSaleAlertActive = false;
+    watch.pendingBelowLatestSaleAlert = false;
+    await chrome.storage.local.set({ [WATCH_KEY]: watches });
+  }
+}
+
 async function renderMonitor() {
   const watches = await migrateWatches();
   const stored = await chrome.storage.local.get([STATUS_KEY, SNAPSHOT_KEY]);
@@ -211,6 +224,43 @@ async function renderMonitor() {
     rule.append(min, max, save);
     const ruleHelp = document.createElement('div'); ruleHelp.className = 'monitor-status';
     ruleHelp.textContent = '只填最高价表示“≤ 该价格”；上下限都填表示区间提醒。清空两项可关闭。';
+    const saleAlert = document.createElement('label'); saleAlert.className = 'sale-alert-toggle';
+    const saleAlertInput = document.createElement('input'); saleAlertInput.type = 'checkbox'; saleAlertInput.checked = watch.belowLatestSaleAlertEnabled === true;
+    const saleAlertText = document.createElement('span'); saleAlertText.textContent = '当前最低价低于 Latest Sales 底价时提醒';
+    saleAlertInput.addEventListener('change', async () => {
+      const enabled = saleAlertInput.checked;
+      try {
+        await saveBelowLatestSaleAlert(watchId, enabled);
+      } catch (error) {
+        saleAlertInput.checked = !enabled;
+        status(error.message || String(error), 'error');
+        return;
+      }
+      if (!enabled) return status(`已关闭 ${watch.name} 的 Latest Sales 底价提醒。`, 'success');
+      status(`已开启 ${watch.name} 的 Latest Sales 底价提醒，正在检查 Market 页…`);
+      try {
+        const response = await Promise.race([
+          chrome.runtime.sendMessage({ type: 'FC27_CHECK_WATCH_NOW', watchId }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('检查超过 8 秒，请稍后查看卡片状态。')), 8000))
+        ]);
+        const result = response?.result;
+        if (!response?.ok || result?.status === 'error') throw new Error(result?.error || response?.error || '即时检查失败。');
+        if (!result) throw new Error('即时检查没有返回这张卡的结果。');
+        status(result.belowLatestSaleAlert
+          ? `${watch.name} 已低于 Latest Sales 底价，通知已发送。`
+          : `${watch.name} 已完成即时检查；本次没有新的底价提醒。`, 'success');
+      } catch (error) {
+        status(`开关已开启，但即时检查失败：${error.message || String(error)}`, 'error');
+      }
+    });
+    saleAlert.append(saleAlertInput, saleAlertText);
+    const saleAlertHistory = document.createElement('div'); saleAlertHistory.className = 'monitor-status';
+    if (watch.lastBelowLatestSaleNotification?.sentAt) {
+      const last = watch.lastBelowLatestSaleNotification;
+      saleAlertHistory.textContent = `上次底价通知 ${formatTime(last.sentAt)} · 最低报价 ${formatCoins(last.lowestPrice)} / 最低成交 ${formatCoins(last.latestSaleLowestPrice)}`;
+    } else {
+      saleAlertHistory.textContent = '尚未发送过 Latest Sales 底价通知';
+    }
     const checkedAt = formatTime(monitorStatus?.checkedAt || market?.checkedAt);
     const detail = document.createElement('div');
     if (monitorStatus?.state === 'error') {
@@ -226,7 +276,7 @@ async function renderMonitor() {
     const remove = document.createElement('button'); remove.className = 'remove'; remove.textContent = '移除';
     remove.addEventListener('click', async () => { await removeWatch(watchId); await renderMonitor(); status(`已移除 ${watch.name} 的监控和历史。`, 'success'); });
     actions.append(open, remove);
-    li.append(head, price, depth, trend, sales, range, rule, ruleHelp, detail, actions); list.append(li);
+    li.append(head, price, depth, trend, sales, range, rule, ruleHelp, saleAlert, saleAlertHistory, detail, actions); list.append(li);
   }
 }
 
@@ -274,7 +324,7 @@ $('checkMonitor').addEventListener('click', async () => {
   const response = await chrome.runtime.sendMessage({ type: 'FC27_CHECK_RANGES_NOW', reload: true, forceSnapshot: true });
   await renderMonitor();
   const results = response?.results || [], failures = results.filter((result) => result.status === 'error');
-  const alerts = results.filter((result) => result.rangeChanged || result.priceAlert);
+  const alerts = results.filter((result) => result.rangeChanged || result.priceAlert || result.belowLatestSaleAlert);
   const saved = results.filter((result) => result.snapshotSaved).length;
   if (!response?.ok || failures.length) status(failures.length ? `${failures.length} 张检查失败，请查看卡片状态。` : response?.error || '检查失败。', 'error');
   else if (!results.length) status('尚未添加任何监控卡片。', 'error');

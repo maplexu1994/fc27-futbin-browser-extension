@@ -126,11 +126,11 @@ async function findMonitorTab(watch) {
   return matching.find((tab) => tab.active) || matching[0] || null;
 }
 
-async function readWatch(watch, { reload = true } = {}) {
+async function readWatch(watch, { reload = true, attempts = 30 } = {}) {
   const tab = await findMonitorTab(watch);
   if (!tab?.id) throw new Error('市场监控页未打开，请点击“打开监控页”');
   if (reload && !tab.active) await reloadTabAndWait(tab.id);
-  const response = await readPageWhenReady(tab.id);
+  const response = await readPageWhenReady(tab.id, attempts);
   if (!response.item.isMarketPage) throw new Error('当前探测页不是 Market 页面');
   if (watch.basePlayerEaId && response.item.eaId !== watch.basePlayerEaId) throw new Error(`基础球员 ID 不匹配：${response.item.eaId}`);
   if (watch.pageId && response.item.pageId !== watch.pageId) throw new Error('FUTBIN 卡片页面 ID 不匹配');
@@ -152,6 +152,14 @@ async function notifyPriceAlert(watch, market) {
     type: 'basic', iconUrl: chrome.runtime.getURL('monitor-icon.png'), title: `${watch.name} 已进入低价提醒区间`,
     message: `当前最低 ${formatCoins(market.lowestPrice)}（规则 ${ruleText}）；页面报价样本 ${market.visibleCount} 个：同价最低 ${market.atLowestCount} 个，另有 ${Math.max(0, market.within5Count - market.atLowestCount)} 个比最低价高不超过 5%`,
     contextMessage: 'FUTBIN Market 页面报价样本（最多 5 个）', priority: 2, requireInteraction: true
+  });
+}
+
+async function notifyBelowLatestSale(watch, market, latestSales) {
+  await chrome.notifications.create(`fc27-sale-${watch.pageId}-${Date.now()}`, {
+    type: 'basic', iconUrl: chrome.runtime.getURL('monitor-icon.png'), title: `${watch.name} 当前最低价低于最近成交底价`,
+    message: `当前最低报价 ${formatCoins(market.lowestPrice)}，Latest Sales 可见最低成交 ${formatCoins(latestSales.lowestPrice)}`,
+    contextMessage: 'FUTBIN Market 页面当前显示的 PC 数据', priority: 2, requireInteraction: true
   });
 }
 
@@ -196,10 +204,23 @@ async function checkWatch(watchId, watch, options = {}) {
     const rangeChanged = Boolean(oldRange && (oldRange.min !== nextRange.min || oldRange.max !== nextRange.max));
     const alertMatches = priceMatches(current.priceRule, item.market.lowestPrice);
     const shouldAlert = alertMatches && !current.priceAlertActive;
+    const salePrice = item.latestSales?.lowestPrice;
+    const hasSaleComparison = Number.isFinite(salePrice) && salePrice > 0;
+    const belowLatestSale = hasSaleComparison && item.market.lowestPrice < salePrice;
     if (rangeChanged) current.pendingRangeNotification = { from: oldRange, to: nextRange };
     if (shouldAlert) current.pendingPriceAlert = true;
     if (!alertMatches) current.pendingPriceAlert = false;
     current.priceAlertActive = alertMatches;
+    if (current.belowLatestSaleAlertEnabled && hasSaleComparison) {
+      if (belowLatestSale && (!current.belowLatestSaleAlertActive || !current.lastBelowLatestSaleNotification)) {
+        current.pendingBelowLatestSaleAlert = true;
+      }
+      if (!belowLatestSale) current.pendingBelowLatestSaleAlert = false;
+      current.belowLatestSaleAlertActive = belowLatestSale;
+    } else if (!current.belowLatestSaleAlertEnabled) {
+      current.belowLatestSaleAlertActive = false;
+      current.pendingBelowLatestSaleAlert = false;
+    }
     current.lastRange = { ...nextRange, checkedAt: nowIso() };
     current.lastPrice = item.market.lowestPrice;
     current.lastMarket = { ...item.market, checkedAt: nowIso() };
@@ -210,6 +231,7 @@ async function checkWatch(watchId, watch, options = {}) {
     await chrome.storage.local.set({ [WATCH_KEY]: watches });
     let rangeNotified = false;
     let priceNotified = false;
+    let belowLatestSaleNotified = false;
     if (current.pendingRangeNotification) {
       await notifyRangeChange(current, current.pendingRangeNotification.from, current.pendingRangeNotification.to);
       delete current.pendingRangeNotification;
@@ -222,12 +244,22 @@ async function checkWatch(watchId, watch, options = {}) {
       await chrome.storage.local.set({ [WATCH_KEY]: watches });
       priceNotified = true;
     }
+    if (current.pendingBelowLatestSaleAlert && hasSaleComparison && belowLatestSale) {
+      await notifyBelowLatestSale(current, item.market, item.latestSales);
+      current.pendingBelowLatestSaleAlert = false;
+      current.lastBelowLatestSaleNotification = {
+        sentAt: nowIso(), lowestPrice: item.market.lowestPrice, latestSaleLowestPrice: salePrice
+      };
+      await chrome.storage.local.set({ [WATCH_KEY]: watches });
+      belowLatestSaleNotified = true;
+    }
     const messages = [];
     if (rangeNotified) messages.push('价格范围已调整');
     if (priceNotified) messages.push('最低价已进入提醒区间');
+    if (belowLatestSaleNotified) messages.push('当前最低价低于 Latest Sales 底价');
     if (snapshotSaved) messages.push('已记录市场样本');
-    await setWatchStatus(watchId, { state: 'ok', message: messages.join('；') || '已读取页面，最低价与价格范围未触发通知', checkedAt: nowIso() });
-    return { watchId, status: rangeNotified || priceNotified ? 'changed' : 'unchanged', item, rangeChanged: rangeNotified, priceAlert: priceNotified, snapshotSaved };
+    await setWatchStatus(watchId, { state: 'ok', message: messages.join('；') || '已读取页面，提醒条件未触发', checkedAt: nowIso() });
+    return { watchId, status: rangeNotified || priceNotified || belowLatestSaleNotified ? 'changed' : 'unchanged', item, rangeChanged: rangeNotified, priceAlert: priceNotified, belowLatestSaleAlert: belowLatestSaleNotified, snapshotSaved };
   } catch (error) {
     await setWatchStatus(watchId, { state: 'error', message: error.message || String(error), checkedAt: nowIso() });
     return { watchId, status: 'error', error: error.message || String(error) };
@@ -253,7 +285,7 @@ chrome.runtime.onInstalled.addListener(() => { ensureMonitor().catch(() => {}); 
 chrome.runtime.onStartup.addListener(() => { ensureMonitor().catch(() => {}); });
 chrome.alarms.onAlarm.addListener((alarm) => { if (alarm.name === MONITOR_ALARM) checkAll().catch(() => {}); });
 chrome.notifications.onClicked.addListener(async (notificationId) => {
-  const match = notificationId.match(/^fc27-(?:range|price)-(\d+)-/);
+  const match = notificationId.match(/^fc27-(?:range|price|sale)-(\d+)-/);
   if (!match) return;
   const watches = await migrateWatches();
   const url = Object.values(watches).find((watch) => watch.pageId === match[1])?.url;
@@ -262,6 +294,16 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'FC27_CHECK_RANGES_NOW') {
     checkAll({ reload: message.reload !== false, forceSnapshot: message.forceSnapshot === true }).then((results) => sendResponse({ ok: true, results })).catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
+    return true;
+  }
+  if (message?.type === 'FC27_CHECK_WATCH_NOW') {
+    (async () => {
+      const watches = await migrateWatches();
+      const watch = watches[message.watchId];
+      if (!watch) throw new Error('这张卡已不在监控列表中。');
+      return checkWatch(message.watchId, watch, { reload: false, attempts: 3 });
+    })().then((result) => sendResponse({ ok: true, result }))
+      .catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
     return true;
   }
   if (message?.type === 'FC27_TEST_RANGE_NOTIFICATION') {

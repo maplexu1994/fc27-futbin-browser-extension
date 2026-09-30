@@ -3,6 +3,12 @@ body { width: 430px; max-height: 650px; margin: 0; overflow-y: auto; color: #e8e
 header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #29394a; }
 header strong { font-size: 15px; }
 header p, .hint { margin: 3px 0 0; color: #9eb0c3; }
+header .author-byline { margin-top: 5px; color: #bdebdc; font-size: 11px; }
+.copyright-footer { position: sticky; bottom: 0; z-index: 1; padding: 9px 16px; border-top: 1px solid #29394a; color: #9eb0c3; background: #101923; font-size: 11px; line-height: 1.6; }
+.copyright-footer a { color: #bdebdc; overflow-wrap: anywhere; }
+.author-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.copyright-footer a:focus-visible { outline: 2px solid #61d8b7; outline-offset: 2px; }
+.card-watermark { align-self: center; margin-left: auto; color: #9eb0c3; font-size: 10px; white-space: nowrap; }
 .badge { padding: 4px 8px; border-radius: 12px; color: #bdebdc; background: #173b34; white-space: nowrap; }
 main { padding: 14px 16px 16px; }
 .actions { display: flex; gap: 8px; }
@@ -38,7 +44,7 @@ input[type=file] { display: none; }
 .rule-row button { min-height: 30px; padding: 4px 7px; font-size: 11px; }
 .sale-alert-toggle { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: #ffcf83; font-size: 12px; cursor: pointer; }
 .sale-alert-toggle input { margin: 0; accent-color: #61d8b7; }
-.monitor-card-actions { display: flex; gap: 6px; margin-top: 7px; }
+.monitor-card-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
 .monitor-card-actions button { min-height: 27px; padding: 4px 8px; font-size: 11px; }
 .monitor-card-actions .remove { color: #ffb6b6; }
 .monitor-actions { margin-top: 8px; }

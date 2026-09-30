@@ -2,6 +2,7 @@ const WATCH_KEY = 'fc27PriceRangeWatchesV1';
 const STATUS_KEY = 'fc27PriceRangeStatusV1';
 const SNAPSHOT_KEY = 'fc27MarketSnapshotsV1';
 const $ = (id) => document.getElementById(id);
+$('extensionVersion').textContent = `v${chrome.runtime.getManifest().version}`;
 
 function status(message, kind = '') {
   $('status').textContent = message;
@@ -275,7 +276,9 @@ async function renderMonitor() {
     open.addEventListener('click', async () => { await openWatchTab(watch); status(`已打开 ${watch.name} 的 Market 监控页。`, 'success'); });
     const remove = document.createElement('button'); remove.className = 'remove'; remove.textContent = '移除';
     remove.addEventListener('click', async () => { await removeWatch(watchId); await renderMonitor(); status(`已移除 ${watch.name} 的监控和历史。`, 'success'); });
-    actions.append(open, remove);
+    const watermark = document.createElement('span'); watermark.className = 'card-watermark';
+    watermark.textContent = '© MapleShadow';
+    actions.append(open, remove, watermark);
     li.append(head, price, depth, trend, sales, range, rule, ruleHelp, saleAlert, saleAlertHistory, detail, actions); list.append(li);
   }
 }

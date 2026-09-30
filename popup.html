@@ -8,7 +8,7 @@
 </head>
 <body>
   <header>
-    <div><strong>FC27 FUTBIN 市场监控</strong><p>PC 报价、最近成交与价格范围</p></div>
+    <div><strong>FC27 FUTBIN 市场监控</strong><p>PC 报价、最近成交与价格范围</p><p class="author-byline">作者：MapleShadow</p></div>
     <span id="monitorState" class="badge">0 张</span>
   </header>
   <main>
@@ -40,6 +40,14 @@
       <p>扩展只读取 FUTBIN Market 页已显示的 PC 报价并保存在本机。报价样本最多取页面最低的五个，不是 EA 全市场挂单总数；“比最低价高不超过 5%”的数量不含最低价同价报价。每张卡只需一个 Market 页；前台不强制刷新，后台每分钟刷新。遇到验证页时不会尝试绕过。</p>
     </details>
   </main>
+  <footer class="copyright-footer" aria-label="作者与使用许可">
+    <div>© 2026 MapleShadow · <span id="extensionVersion"></span></div>
+    <div>允许免费转发 · 不可商用 · 转发请保留署名</div>
+    <div class="author-links">
+      <a href="mailto:maplexu1994@hotmail.com" target="_blank" rel="noopener noreferrer">maplexu1994@hotmail.com</a>
+      <a href="https://github.com/maplexu1994/fc27-futbin-browser-extension" target="_blank" rel="noopener noreferrer">GitHub 项目</a>
+    </div>
+  </footer>
   <script src="sales-parser.js"></script>
   <script src="monitor-backup.js"></script>
   <script src="market-trend.js"></script>

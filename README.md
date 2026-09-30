@@ -1,6 +1,10 @@
 # FC27 FUTBIN 市场监控扩展
 
-适用版本 v1.5.4 · 更新日期 2026 年 9 月 30 日
+适用版本 v1.5.5 · 更新日期 2026 年 9 月 30 日
+
+作者：MapleShadow · 允许免费转发，不可商用；转发请保留署名。
+
+[GitHub 项目](https://github.com/maplexu1994/fc27-futbin-browser-extension) · [联系作者](mailto:maplexu1994@hotmail.com) · [使用许可](COPYRIGHT.md)
 
 [HTML 阅读版](docs/产品文档.html) · [原 README 归档](docs/archive/README-2026-09-30.md)
 

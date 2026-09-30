@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "FC27 FUTBIN Market Monitor",
-  "version": "1.5.4",
-  "description": "Monitor FUTBIN FC27 Market prices, visible listing depth, and EA price-range changes.",
+  "version": "1.5.5",
+  "author": "MapleShadow",
+  "homepage_url": "https://github.com/maplexu1994/fc27-futbin-browser-extension",
+  "description": "FUTBIN FC27 PC 市场监控、最近成交与价格范围提醒。作者 MapleShadow；允许免费转发，不可商用。",
   "permissions": ["storage", "tabs", "alarms", "notifications", "scripting"],
   "host_permissions": ["https://www.futbin.com/*"],
   "action": {

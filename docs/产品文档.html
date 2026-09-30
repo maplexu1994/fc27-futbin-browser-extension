@@ -1,0 +1,291 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FC27 FUTBIN 市场监控扩展产品文档</title><style>*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eaf0f3;color:#213642;font-family:'Microsoft YaHei','Segoe UI',sans-serif;font-size:15px;line-height:1.85}main{max-width:1080px;margin:40px auto;padding:54px 62px 64px;background:#fff;border-radius:14px;box-shadow:0 12px 44px #18334012}h1{font-size:32px;line-height:1.4;margin:0 0 12px;color:#132c38}h1+p{font-size:13px;color:#657e8c;margin-bottom:28px}h2{font-size:23px;margin:42px 0 16px;color:#133e49;scroll-margin-top:24px}h3{font-size:18px;margin:24px 0 12px}p{margin:12px 0}table{width:100%;border-collapse:collapse;margin:18px 0 22px;font-size:14px;line-height:1.65}th{background:#ecf4f4;color:#214652;text-align:left;font-weight:650}td,th{padding:12px 14px;border-bottom:1px solid #dfe8eb;vertical-align:top}tr:nth-child(even) td{background:#f8fafb}td:first-child{min-width:135px;width:22%}code{font-family:Consolas,monospace;font-size:.9em;color:#185561;background:#edf4f5;padding:2px 5px;border-radius:4px}ol{padding-left:25px}li{padding:3px 0}figure{margin:22px 0 12px}figure svg{display:block;width:100%;height:auto;border-radius:10px}figure+p{color:#607683;font-size:13px}nav{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 30px;padding:16px 0;border-top:1px solid #e2ebef;border-bottom:1px solid #e2ebef}nav a{color:#226371;font-size:13px;text-decoration:none;padding:3px 10px;background:#edf6f6;border-radius:4px}footer{margin-top:36px;color:#657e8c;font-size:12px}a{color:#226371}@media(max-width:700px){main{margin:0;padding:28px 18px;border-radius:0}h1{font-size:25px}table{font-size:12px}td,th{padding:8px}td:first-child{min-width:80px}figure{overflow:auto}figure svg{min-width:680px}}@media print{@page{size:A4;margin:16mm}body{background:#fff;font-size:10pt;line-height:1.65}main{margin:0;padding:0;max-width:none;box-shadow:none}h1{font-size:23pt}h2{font-size:16pt;margin-top:22pt;break-after:avoid}h3{font-size:12pt;break-after:avoid}nav{display:none}table{font-size:9pt}td,th{padding:7px 8px}tr,figure{break-inside:avoid}thead{display:table-header-group}figure svg{min-width:0}p{orphans:3;widows:3}a{color:inherit}}</style></head><body><main><h1>FC27 FUTBIN 市场监控扩展产品文档</h1>
+<p>适用版本 v1.5.4 · 更新日期 2026 年 9 月 30 日</p><nav aria-label="文档目录"><a href="#section-1">1 产品概览</a><a href="#section-2">2 它解决的痛点</a><a href="#section-3">3 核心功能</a><a href="#section-4">4 界面图例</a><a href="#section-5">5 简要使用指南</a><a href="#section-6">6 数据口径与使用边界</a><a href="#section-7">7 隐私与权限</a><a href="#section-8">8 常见问题</a></nav>
+<p>这是一款面向 EA SPORTS FC27 Ultimate Team PC 市场的 Chrome / Edge 浏览器扩展。它把 FUTBIN 球员 Market 页中的最低报价、可见报价样本、最近成交和 EA 价格范围汇总到一个监控面板，按用户设置发送桌面提醒，并在本机积累市场记录。</p>
+<p>它适合已有目标卡片、希望减少反复切页查价的玩家。使用者仍需在游戏市场中核实价格并自行完成交易；扩展提供观察与提醒，不执行买卖。</p>
+<h2 id="section-1">1 产品概览</h2>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>产品名称</td>
+<td>FC27 FUTBIN Market Monitor／FC27 FUTBIN 市场监控</td>
+</tr>
+<tr>
+<td>适用环境</td>
+<td>Chrome、Microsoft Edge；以解压缩扩展方式安装</td>
+</tr>
+<tr>
+<td>监控对象</td>
+<td>FUTBIN FC27 卡片的 PC 市场数据；同名球员的不同版本按站内卡片 ID 区分</td>
+</tr>
+<tr>
+<td>数据来源</td>
+<td>用户正常打开的 FUTBIN 球员 Market 页面</td>
+</tr>
+<tr>
+<td>检查频率</td>
+<td>定时每分钟检查；后台监控标签刷新，当前活动标签不强制刷新</td>
+</tr>
+<tr>
+<td>记录频率</td>
+<td>每 15 分钟保存一条样本；可手动强制记录</td>
+</tr>
+<tr>
+<td>历史容量</td>
+<td>每张卡最多 672 条，按正常记录节奏约 7 天；手动频繁记录会缩短覆盖时间</td>
+</tr>
+<tr>
+<td>数据保存</td>
+<td>浏览器本机存储；CSV 用于分析，JSON 用于备份与恢复</td>
+</tr>
+</tbody></table>
+<h2 id="section-2">2 它解决的痛点</h2>
+<table>
+<thead>
+<tr>
+<th>用户遇到的问题</th>
+<th>扩展如何帮助</th>
+<th>用户得到的价值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>多张目标卡需要逐个打开、刷新和查价</td>
+<td>将卡片集中到面板，定时读取对应 Market 页</td>
+<td>减少重复查价和切换标签的操作</td>
+</tr>
+<tr>
+<td>等待目标价时需要持续盯着页面</td>
+<td>设置最高价或目标区间，满足条件后发送桌面通知</td>
+<td>把注意力放在其他任务上，收到提醒再核实</td>
+</tr>
+<tr>
+<td>单看最低价，难以判断低价报价是否集中</td>
+<td>同时展示最低价同价数量和上方 5% 内的其他样本数量</td>
+<td>看清页面可见低价层，而不只看一个数字</td>
+</tr>
+<tr>
+<td>报价与近期成交分散，比较不方便</td>
+<td>展示 Latest Sales 最低成交，并可提醒当前报价跌破该底价</td>
+<td>更快发现值得进一步核实的价差</td>
+</tr>
+<tr>
+<td>缺少前后记录，难以判断价格变化</td>
+<td>保存历史样本，并显示近期最低价变化与走势提示</td>
+<td>为观察价格方向和复盘提供依据</td>
+</tr>
+<tr>
+<td>EA 价格范围调整容易被忽略</td>
+<td>检测范围上下限变化并通知</td>
+<td>及时回看卡片的价格范围</td>
+</tr>
+<tr>
+<td>更换安装目录或电脑后监控配置难以迁移</td>
+<td>JSON 备份和恢复卡片、提醒规则及历史</td>
+<td>减少重新配置的工作</td>
+</tr>
+</tbody></table>
+<p>典型场景：玩家为几张目标卡设置关注价格，让对应 Market 标签在后台保持打开。桌面通知出现后，打开卡片查看报价、成交底价和最近检查时间，再到游戏市场确认是否有合适的交易机会。</p>
+<h2 id="section-3">3 核心功能</h2>
+<h3>卡片监控与集中查看</h3>
+<p>从 FUTBIN FC27 球员详情页或 Market 页点击“添加当前卡片”，即可加入监控。扩展会把当前标签切换到 Market 页并固定标签。每张卡只需一个对应页面；评分、版本与 FUTBIN 卡片 ID 帮助识别不同卡片。</p>
+<p>每张监控卡展示最低 PC 报价、页面报价样本分布、Latest Sales 最低成交及其时间、EA 价格范围、最近检查状态和已保存的历史条数。读取失败时，面板会标记“需处理”，旧价格标为“上次读到的”，避免误认为刚刚更新。</p>
+<h3>三类桌面提醒</h3>
+<table>
+<thead>
+<tr>
+<th>提醒类型</th>
+<th>设置方式</th>
+<th>触发规则</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>目标价格提醒</td>
+<td>填写“提醒最高价”；可同时填写“下限”并保存</td>
+<td>最低价小于等于最高价；若有下限，则必须同时大于等于下限</td>
+</tr>
+<tr>
+<td>最近成交底价提醒</td>
+<td>勾选“当前最低价低于 Latest Sales 底价时提醒”</td>
+<td>当前最低 PC 报价严格低于同页可见 Latest Sales 最低 PC 成交价</td>
+</tr>
+<tr>
+<td>EA 价格范围变动提醒</td>
+<td>添加监控卡片后自动检测</td>
+<td>后续成功读取的范围上下限相对已记录范围发生变化</td>
+</tr>
+</tbody></table>
+<p>价格提醒与成交底价提醒在条件首次满足时通知，持续满足不会每分钟重复发送；离开条件后再次满足，才会再次触发。新建或修改价格规则后，下一次成功检查若已满足条件，也可触发通知。开启成交底价提醒会立即检查该卡片；没有可解析的销售记录时不触发。</p>
+<p>点击卡片通知可以打开对应 Market 页。“测试通知”用于确认浏览器和系统的桌面通知是否可见。</p>
+<h3>近期走势提示</h3>
+<p>面板将当前报价与 14 至 30 分钟前最近的一条有效历史样本比较，显示实际间隔和最低价变化。它以先前最低价为固定门槛，观察该价格及以下的可见报价数量，给出“偏涨迹象”“偏跌迹象”“初步止跌”或“方向待确认”等提示；连续两段同向变化会在文字中说明。</p>
+<p>首次使用需等待约 15 分钟形成可比较的历史。“判断依据”可展开查看计算口径。走势提示是有限报价样本的观察结果，挂单消失也可能是撤单或到期，不代表已成交，也不保证后续价格方向。</p>
+<h3>历史记录与迁移</h3>
+<p>“立即检查并记录”会检查监控卡片，并为成功读取的卡片强制保存一次样本。“导出市场记录”生成 CSV，可用于表格分析，包含卡片身份、采样时间、最低价、可见报价与成交字段等。</p>
+<p>“备份监控数据”生成 JSON，包含监控卡片、规则和市场历史。“恢复监控数据”合并历史；若同一张卡已存在，保留当前扩展中的提醒规则。恢复后需打开 Market 页，才能继续定时读取。</p>
+<h2 id="section-4">4 界面图例</h2>
+<p><figure aria-label="监控面板示意图"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 840" role="img" aria-label="监控面板简化示意 使用演示数据"><title>监控面板简化示意 使用演示数据</title><g font-family="Microsoft YaHei,Segoe UI,sans-serif"><rect x="0" y="0" width="1100" height="840" rx="8" fill="#edf3f6" stroke="none"/><rect x="26" y="24" width="480" height="790" rx="8" fill="#101923" stroke="none"/><text x="47" y="60" font-size="21" fill="#e8eef7" font-weight="700">FC27 FUTBIN 市场监控</text><text x="47" y="88" font-size="14" fill="#9eb0c3" font-weight="400">PC 报价、最近成交与价格范围</text><rect x="440" y="44" width="43" height="28" rx="8" fill="#173b34" stroke="none"/><text x="448" y="64" font-size="14" fill="#bdebdc" font-weight="400">1 张</text><text x="47" y="128" font-size="17" fill="#e8eef7" font-weight="700">PC 市场监控</text><text x="47" y="154" font-size="14" fill="#9eb0c3" font-weight="400">后台每分钟检查 · 每 15 分钟保存样本</text><rect x="43" y="170" width="446" height="434" rx="8" fill="#172330" stroke="#34475b"/><text x="58" y="199" font-size="18" fill="#e8eef7" font-weight="700">示例球员 A</text><text x="405" y="199" font-size="14" fill="#61d8b7" font-weight="400">监控中</text><text x="58" y="222" font-size="13" fill="#9eb0c3" font-weight="400">88 · 示例版本 · FUTBIN 卡片 ID</text><text x="58" y="253" font-size="23" fill="#61d8b7" font-weight="700">最低价 48,000</text><circle cx="465" cy="247" r="13" fill="#61d8b7"/><text x="460" y="252" font-size="15" fill="#10212a" font-weight="700">1</text><text x="58" y="279" font-size="14" fill="#dbe6f0" font-weight="400">页面报价样本 5 个：2 个与最低价相同</text><text x="58" y="301" font-size="14" fill="#dbe6f0" font-weight="400">另有 2 个比最低价高不超过 5%</text><circle cx="465" cy="294" r="13" fill="#61d8b7"/><text x="460" y="299" font-size="15" fill="#10212a" font-weight="700">2</text><rect x="58" y="316" width="410" height="69" rx="8" fill="#1b3037" stroke="none"/><text x="70" y="338" font-size="14" fill="#bdebdc" font-weight="700">近 15 分钟最低报价：50,000 → 48,000</text><text x="70" y="361" font-size="14" fill="#bdebdc" font-weight="400">预计走势：偏跌迹象（待确认）</text><text x="70" y="379" font-size="12" fill="#9eb0c3" font-weight="400">▸ 判断依据</text><circle cx="465" cy="350" r="13" fill="#61d8b7"/><text x="460" y="355" font-size="15" fill="#10212a" font-weight="700">3</text><text x="58" y="408" font-size="14" fill="#ffcf83" font-weight="400">Latest Sales 最低成交 50,500 · 显示 5 笔</text><text x="58" y="430" font-size="14" fill="#9eb0c3" font-weight="400">EA 价格范围：10,000–100,000</text><circle cx="465" cy="410" r="13" fill="#61d8b7"/><text x="460" y="415" font-size="15" fill="#10212a" font-weight="700">4</text><rect x="58" y="446" width="129" height="34" rx="5" fill="#101923" stroke="#40566c"/><text x="67" y="469" font-size="13" fill="#9eb0c3" font-weight="400">下限（可空）</text><rect x="194" y="446" width="144" height="34" rx="5" fill="#101923" stroke="#40566c"/><text x="204" y="469" font-size="14" fill="#dbe6f0" font-weight="400">50000</text><rect x="346" y="446" width="116" height="34" rx="8" fill="#26384a" stroke="none"/><text x="356" y="469" font-size="14" fill="#dbe6f0" font-weight="400">保存提醒</text><text x="58" y="500" font-size="12" fill="#9eb0c3" font-weight="400">只填最高价表示 ≤ 该价格；清空两项可关闭。</text><circle cx="465" cy="465" r="13" fill="#61d8b7"/><text x="460" y="470" font-size="15" fill="#10212a" font-weight="700">5</text><rect x="59" y="514" width="16" height="16" rx="3" fill="#61d8b7" stroke="none"/><text x="61" y="527" font-size="13" fill="#101923" font-weight="700">✓</text><text x="84" y="528" font-size="13" fill="#ffcf83" font-weight="400">当前最低价低于 Latest Sales 底价时提醒</text><text x="58" y="550" font-size="12" fill="#9eb0c3" font-weight="400">最近检查成功 · 已存 8 条</text><rect x="58" y="561" width="113" height="34" rx="8" fill="#26384a" stroke="none"/><text x="68" y="584" font-size="14" fill="#dbe6f0" font-weight="400">打开 Market</text><rect x="180" y="561" width="65" height="34" rx="8" fill="#26384a" stroke="none"/><text x="190" y="584" font-size="14" fill="#dbe6f0" font-weight="400">移除</text><rect x="43" y="620" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="53" y="643" font-size="14" fill="#dbe6f0" font-weight="400">选择新球员</text><rect x="270" y="620" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="280" y="643" font-size="14" fill="#dbe6f0" font-weight="400">添加当前卡片</text><rect x="43" y="666" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="53" y="689" font-size="14" fill="#dbe6f0" font-weight="400">打开全部 Market 页</text><rect x="270" y="666" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="280" y="689" font-size="14" fill="#dbe6f0" font-weight="400">立即检查并记录</text><rect x="43" y="712" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="53" y="735" font-size="14" fill="#dbe6f0" font-weight="400">导出市场记录</text><rect x="270" y="712" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="280" y="735" font-size="14" fill="#dbe6f0" font-weight="400">测试通知</text><rect x="43" y="758" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="53" y="781" font-size="14" fill="#dbe6f0" font-weight="400">备份监控数据</text><rect x="270" y="758" width="218" height="34" rx="8" fill="#26384a" stroke="none"/><text x="280" y="781" font-size="14" fill="#dbe6f0" font-weight="400">恢复监控数据</text><circle cx="499" cy="735" r="13" fill="#61d8b7"/><text x="494" y="740" font-size="15" fill="#10212a" font-weight="700">6</text><circle cx="553" cy="193" r="13" fill="#61d8b7"/><text x="548" y="198" font-size="15" fill="#10212a" font-weight="700">1</text><text x="580" y="200" font-size="20" fill="#183340" font-weight="700">查看最低报价</text><text x="580" y="229" font-size="16" fill="#45606f" font-weight="400">绿色价格是页面 PC 最低报价。</text><text x="580" y="254" font-size="16" fill="#45606f" font-weight="400">先核对卡片版本和最近检查状态。</text><circle cx="553" cy="303" r="13" fill="#61d8b7"/><text x="548" y="308" font-size="15" fill="#10212a" font-weight="700">2</text><text x="580" y="310" font-size="20" fill="#183340" font-weight="700">判断可见低价层</text><text x="580" y="339" font-size="16" fill="#45606f" font-weight="400">同价与上方 5% 内样本分别展示。</text><text x="580" y="364" font-size="16" fill="#45606f" font-weight="400">最多五个报价，不代表全市场数量。</text><circle cx="553" cy="413" r="13" fill="#61d8b7"/><text x="548" y="418" font-size="15" fill="#10212a" font-weight="700">3</text><text x="580" y="420" font-size="20" fill="#183340" font-weight="700">观察近期变化</text><text x="580" y="449" font-size="16" fill="#45606f" font-weight="400">与约 15 分钟前样本比较。</text><text x="580" y="474" font-size="16" fill="#45606f" font-weight="400">展开“判断依据”查看口径。</text><circle cx="553" cy="523" r="13" fill="#61d8b7"/><text x="548" y="528" font-size="15" fill="#10212a" font-weight="700">4</text><text x="580" y="530" font-size="20" fill="#183340" font-weight="700">对照最近成交与价格范围</text><text x="580" y="559" font-size="16" fill="#45606f" font-weight="400">最近成交仅来自可见 Latest Sales。</text><text x="580" y="584" font-size="16" fill="#45606f" font-weight="400">EA 范围变动会自动提醒。</text><circle cx="553" cy="633" r="13" fill="#61d8b7"/><text x="548" y="638" font-size="15" fill="#10212a" font-weight="700">5</text><text x="580" y="640" font-size="20" fill="#183340" font-weight="700">设置两种价格条件</text><text x="580" y="669" font-size="16" fill="#45606f" font-weight="400">最高价或区间规则需点击保存。</text><text x="580" y="694" font-size="16" fill="#45606f" font-weight="400">成交底价提醒使用独立开关。</text><circle cx="553" cy="743" r="13" fill="#61d8b7"/><text x="548" y="748" font-size="15" fill="#10212a" font-weight="700">6</text><text x="580" y="750" font-size="20" fill="#183340" font-weight="700">检查 记录与迁移</text><text x="580" y="779" font-size="16" fill="#45606f" font-weight="400">CSV 用于分析；JSON 用于恢复。</text><text x="580" y="804" font-size="16" fill="#45606f" font-weight="400">首次安装后可先测试桌面通知。</text></g></svg></figure></p>
+<p>图 1 依据现有界面绘制的简化示意，卡片名称与数值均为演示数据，不是实时行情截图。</p>
+<p>示例中，五个报价是 48,000、48,000、49,000、50,000、52,000。最低价同价样本有 2 个；5% 上限为 50,400，另有 2 个报价高于最低价但不超过该上限。Latest Sales 最低成交为 50,500，当前最低价 48,000 严格低于它，开启相应开关后可满足底价提醒条件。</p>
+<h2 id="section-5">5 简要使用指南</h2>
+<p><figure aria-label="从安装到持续监控的使用流程"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 220" role="img" aria-label="安装 添加卡片 设置提醒 保持页面打开 收到提醒后核实"><title>安装 添加卡片 设置提醒 保持页面打开 收到提醒后核实</title><g font-family="Microsoft YaHei,Segoe UI,sans-serif"><rect x="0" y="0" width="1100" height="220" rx="8" fill="#edf3f6" stroke="none"/><rect x="20" y="36" width="190" height="150" rx="12" fill="#ffffff" stroke="#d2e0e5"/><circle cx="48" cy="65" r="13" fill="#61d8b7"/><text x="43" y="70" font-size="15" fill="#10212a" font-weight="700">1</text><text x="35" y="107" font-size="18" fill="#183340" font-weight="700">安装扩展</text><text x="35" y="142" font-size="13" fill="#45606f" font-weight="400">加载根目录并固定图标</text><text x="216" y="118" font-size="21" fill="#6a8793" font-weight="400">→</text><rect x="238" y="36" width="190" height="150" rx="12" fill="#ffffff" stroke="#d2e0e5"/><circle cx="266" cy="65" r="13" fill="#61d8b7"/><text x="261" y="70" font-size="15" fill="#10212a" font-weight="700">2</text><text x="253" y="107" font-size="18" fill="#183340" font-weight="700">添加卡片</text><text x="253" y="142" font-size="13" fill="#45606f" font-weight="400">核对评分和版本</text><text x="434" y="118" font-size="21" fill="#6a8793" font-weight="400">→</text><rect x="456" y="36" width="190" height="150" rx="12" fill="#ffffff" stroke="#d2e0e5"/><circle cx="484" cy="65" r="13" fill="#61d8b7"/><text x="479" y="70" font-size="15" fill="#10212a" font-weight="700">3</text><text x="471" y="107" font-size="18" fill="#183340" font-weight="700">设置提醒</text><text x="471" y="142" font-size="13" fill="#45606f" font-weight="400">保存价格规则与开关</text><text x="652" y="118" font-size="21" fill="#6a8793" font-weight="400">→</text><rect x="674" y="36" width="190" height="150" rx="12" fill="#ffffff" stroke="#d2e0e5"/><circle cx="702" cy="65" r="13" fill="#61d8b7"/><text x="697" y="70" font-size="15" fill="#10212a" font-weight="700">4</text><text x="689" y="107" font-size="18" fill="#183340" font-weight="700">保持页面打开</text><text x="689" y="142" font-size="13" fill="#45606f" font-weight="400">后台检查并累积历史</text><text x="870" y="118" font-size="21" fill="#6a8793" font-weight="400">→</text><rect x="892" y="36" width="190" height="150" rx="12" fill="#ffffff" stroke="#d2e0e5"/><circle cx="920" cy="65" r="13" fill="#61d8b7"/><text x="915" y="70" font-size="15" fill="#10212a" font-weight="700">5</text><text x="907" y="107" font-size="18" fill="#183340" font-weight="700">收到提醒后核实</text><text x="907" y="142" font-size="13" fill="#45606f" font-weight="400">打开页面再确认行情</text></g></svg></figure></p>
+<p>图 2 首次使用的主要步骤。</p>
+<h3>第一步 安装并固定扩展</h3>
+<ol>
+<li>在 Chrome 打开 <code>chrome://extensions</code>，或在 Edge 打开 <code>edge://extensions</code>。</li>
+<li>开启“开发人员模式”，点击“加载解压缩的扩展”。</li>
+<li>选择包含 <code>manifest.json</code> 的扩展根目录，并在浏览器工具栏固定扩展图标。</li>
+</ol>
+<h3>第二步 添加正确版本的卡片</h3>
+<ol>
+<li>点击扩展里的“选择新球员”，在 FUTBIN 目录中打开目标卡片；也可直接打开已有的 FC27 卡片页面。</li>
+<li>确认球员、评分和卡片版本正确，等待 PC 报价和价格范围显示。</li>
+<li>点击“添加当前卡片”。页面将切换为 Market，并成为固定标签。</li>
+<li>查看面板中的身份信息和检查状态；需要立即采样时，点击“立即检查并记录”。</li>
+</ol>
+<h3>第三步 设置提醒</h3>
+<table>
+<thead>
+<tr>
+<th>想实现的效果</th>
+<th>填写或操作示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最低价不高于 50,000 时提醒</td>
+<td>下限留空，最高价填 <code>50000</code>，点击“保存提醒”</td>
+</tr>
+<tr>
+<td>最低价进入 45,000 至 50,000 时提醒</td>
+<td>下限填 <code>45000</code>，最高价填 <code>50000</code>，点击“保存提醒”</td>
+</tr>
+<tr>
+<td>报价跌破可见最近成交底价时提醒</td>
+<td>勾选成交底价提醒开关；它可与价格提醒同时启用</td>
+</tr>
+<tr>
+<td>关闭目标价格提醒</td>
+<td>清空上下限，点击“保存提醒”</td>
+</tr>
+</tbody></table>
+<p>价格必须为正整数；设置下限时也要填写最高价，且下限不能高于最高价。只清空价格输入框不会关闭独立的成交底价提醒，需要取消其勾选。</p>
+<h3>第四步 保持监控并响应通知</h3>
+<p>保持浏览器运行，并保持每张卡的 Market 标签打开。扩展定时每分钟检查；活动页面不强制刷新，切到后台后才刷新。正常采样约 15 分钟后可开始查看走势提示。</p>
+<p>点击“测试通知”确认通知可见。收到提醒后，点击通知打开对应页面，查看最近检查时间，并到游戏市场核实当前报价。浏览器休眠、系统睡眠、网络问题或页面验证都可能使检查和通知延后；每分钟是计划检查频率，不是行情更新或通知到达保证。</p>
+<h3>第五步 导出或备份</h3>
+<p>日常复盘使用“导出市场记录”。迁移目录或电脑前使用“备份监控数据”，在新扩展选择“恢复监控数据”，然后点击“打开全部 Market 页”。确认卡片和历史已经恢复后，再处理旧安装。</p>
+<p>“移除”会删除该卡片的监控、状态及历史；需要保留记录时先导出或备份。同一安装目录升级时，在扩展管理页点击“重新加载”，本机已有监控和历史会保留。</p>
+<h2 id="section-6">6 数据口径与使用边界</h2>
+<table>
+<thead>
+<tr>
+<th>指标或行为</th>
+<th>正确理解</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>当前最低价</td>
+<td>FUTBIN 页面展示的 PC 最低报价，属于第三方快照，不等同于游戏市场实时价格</td>
+</tr>
+<tr>
+<td>页面报价样本</td>
+<td>最多读取页面最低的五个 PC 报价，不是全市场活动挂单总数</td>
+</tr>
+<tr>
+<td>上方 5% 内样本</td>
+<td>界面“另有”数量不含最低价同价报价；CSV 的 <code>within_5_percent_count</code> 包含同价样本</td>
+</tr>
+<tr>
+<td>Latest Sales 最低成交</td>
+<td>仅取页面当前显示、可解析的 PC 销售记录，不能理解为全市场或全天最低成交</td>
+</tr>
+<tr>
+<td>成交时间</td>
+<td>可确认的时间换算为北京时间；仅有英国页面时间时按伦敦时区解释并处理夏令时；无法唯一确定时保留页面时间</td>
+</tr>
+<tr>
+<td>历史覆盖</td>
+<td>最多 672 条；检查失败不会形成有效样本，停机期间不补采，手动记录会占用条数</td>
+</tr>
+<tr>
+<td>产品范围</td>
+<td>当前版本聚焦 FC27 PC 市场；不提供自动买卖、云端同步或旧版 <code>cards.csv</code> 批次采集入口</td>
+</tr>
+</tbody></table>
+<h2 id="section-7">7 隐私与权限</h2>
+<p>扩展将监控列表、提醒规则和市场历史保存在浏览器本机存储，不读取或保存 Cookie，不直接请求 FUTBIN API，也不尝试绕过网站验证。它依赖浏览器正常加载 FUTBIN 页面，并从页面读取已展示的数据。</p>
+<table>
+<thead>
+<tr>
+<th>权限</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>storage</td>
+<td>保存监控配置、状态及历史</td>
+</tr>
+<tr>
+<td>tabs</td>
+<td>查找、打开、切换、固定和刷新监控标签，整理同一卡片的重复 Market 标签</td>
+</tr>
+<tr>
+<td>alarms</td>
+<td>安排定时检查</td>
+</tr>
+<tr>
+<td>notifications</td>
+<td>发送系统桌面提醒</td>
+</tr>
+<tr>
+<td>scripting</td>
+<td>在需要时向匹配的 FUTBIN 页面注入读取脚本</td>
+</tr>
+<tr>
+<td>FUTBIN 网站访问权限</td>
+<td>在 <code>https://www.futbin.com/*</code> 范围内配合页面读取与监控</td>
+</tr>
+</tbody></table>
+<p>备份文件会包含自己的关注卡片、提醒规则和历史记录，适合保存在个人可控的位置。本机存储不会自动跨设备共享。</p>
+<h2 id="section-8">8 常见问题</h2>
+<table>
+<thead>
+<tr>
+<th>现象</th>
+<th>处理方法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>添加卡片失败</td>
+<td>确认是 FUTBIN FC27 球员详情页或 Market 页，并等待 PC 报价及价格范围加载；若遇到验证，先在页面中正常完成验证</td>
+</tr>
+<tr>
+<td>卡片显示“需处理”</td>
+<td>查看错误提示，点击“打开 Market”；多张卡可点击“打开全部 Market 页”，页面正常后再次检查</td>
+</tr>
+<tr>
+<td>检查正常但没有提醒</td>
+<td>核对价格规则、成交底价开关和触发条件；持续处于条件内不会反复通知；用“测试通知”检查系统通知设置</td>
+</tr>
+<tr>
+<td>开启成交底价提醒后即时检查失败</td>
+<td>开关可能已保存；确认 Market 页可读，再用“立即检查并记录”重试并查看状态</td>
+</tr>
+<tr>
+<td>没有走势提示</td>
+<td>等待约 15 分钟的有效历史；中断过久或缺少报价明细时，可能继续等待或显示方向待确认</td>
+</tr>
+<tr>
+<td>恢复文件不被接受</td>
+<td>选择“备份监控数据”生成的 JSON；CSV 不能恢复，超过 25 MB 的备份无法导入</td>
+</tr>
+<tr>
+<td>更新后界面没有变化</td>
+<td>在扩展管理页重新加载扩展；已有 FUTBIN 页面也可刷新后再试</td>
+</tr>
+</tbody></table>
+<p>文档依据当前版本的功能与界面整理，示例中的价格单位均为游戏金币。</p>
+</main></body></html>

@@ -8,6 +8,10 @@
 
 [HTML 阅读版](docs/产品文档.html) · [原 README 归档](docs/archive/README-2026-09-30.md)
 
+**B 站视频教程：**[【FC27 PC】球员降价自动提醒｜自制 FUTBIN 市场监控工具安装与使用](https://www.bilibili.com/video/BV1Gbao6aEhT/)
+
+首次使用可先观看视频，跟着演示完成扩展安装、添加监控卡片和设置价格提醒。
+
 这是一款面向 EA SPORTS FC27 Ultimate Team PC 市场的 Chrome / Edge 浏览器扩展。它把 FUTBIN 球员 Market 页中的最低报价、可见报价样本、最近成交和 EA 价格范围汇总到一个监控面板，按用户设置发送桌面提醒，并在本机积累市场记录。
 
 它适合已有目标卡片、希望减少反复切页查价的玩家。使用者仍需在游戏市场中核实价格并自行完成交易；扩展提供观察与提醒，不执行买卖。
